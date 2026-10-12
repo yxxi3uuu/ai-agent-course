@@ -29,6 +29,23 @@ CREATE TABLE IF NOT EXISTS tenders (
     body          TEXT,
     fetched_date  TEXT
 );
+CREATE TABLE IF NOT EXISTS awards (
+    url           TEXT PRIMARY KEY,
+    title         TEXT NOT NULL,
+    unit          TEXT,
+    industries    TEXT,
+    category      TEXT,
+    budget        INTEGER,
+    award_amount  INTEGER,
+    floor_price   INTEGER,
+    bidders       INTEGER,
+    winners       TEXT,          -- 得標廠商，以「、」分隔
+    winner_sme    TEXT,          -- 是否為中小企業，與 winners 對應
+    method        TEXT,
+    award_date    TEXT,          -- 'YYYY-MM-DD'
+    location      TEXT,
+    fetched_date  TEXT
+);
 CREATE TABLE IF NOT EXISTS subsidies (
     url           TEXT PRIMARY KEY,
     title         TEXT NOT NULL,
@@ -61,6 +78,19 @@ CREATE TABLE IF NOT EXISTS usage (
     input_tokens  INTEGER,
     output_tokens INTEGER,
     created_at    TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS favorites (
+    user_id       TEXT NOT NULL,
+    url           TEXT NOT NULL,     -- 對應 tenders.url
+    created_at    TEXT NOT NULL,
+    PRIMARY KEY (user_id, url)
+);
+CREATE TABLE IF NOT EXISTS daily_stats (
+    date          TEXT NOT NULL,     -- 公告日期 YYYYMMDD
+    industry      TEXT NOT NULL,
+    tender_count  INTEGER,           -- 當日招標公告數
+    budget_total  INTEGER,           -- 有抓明細的標案預算合計（補資料的日期為 NULL）
+    PRIMARY KEY (date, industry)
 );
 CREATE TABLE IF NOT EXISTS meta (
     key           TEXT PRIMARY KEY,
@@ -128,9 +158,35 @@ def update_user(user_id: str, **fields) -> dict:
 
 
 def reset_user(user_id: str) -> None:
+    """清除記憶與對話（收藏保留）"""
     with connect() as conn:
         conn.execute("DELETE FROM messages WHERE user_id = ?", (user_id,))
         conn.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
+
+
+# ===========================================================================
+# 收藏
+# ===========================================================================
+
+def add_favorite(user_id: str, url: str) -> None:
+    with connect() as conn:
+        conn.execute("INSERT OR IGNORE INTO favorites (user_id, url, created_at) VALUES (?, ?, ?)",
+                     (user_id, url, now()))
+
+
+def remove_favorite(user_id: str, url: str) -> None:
+    with connect() as conn:
+        conn.execute("DELETE FROM favorites WHERE user_id = ? AND url = ?", (user_id, url))
+
+
+def favorites(user_id: str) -> list[dict]:
+    """收藏的標案，依截止日由近到遠（截止日未知的排最後）"""
+    with connect() as conn:
+        rows = conn.execute("""
+            SELECT t.* FROM favorites f JOIN tenders t ON t.url = f.url
+            WHERE f.user_id = ?
+            ORDER BY t.deadline IS NULL, t.deadline""", (user_id,)).fetchall()
+    return [dict(r) for r in rows]
 
 
 # ===========================================================================
@@ -214,3 +270,124 @@ def latest_subsidies(limit: int = 20) -> list[dict]:
     with connect() as conn:
         rows = conn.execute("SELECT * FROM subsidies ORDER BY published DESC LIMIT ?", (limit,)).fetchall()
     return [dict(r) for r in rows]
+
+
+# ===========================================================================
+# 得標行情（統計由程式計算，避免 LLM 自己算錯）
+# ===========================================================================
+
+def award_stats(industry: str = "", keyword: str = "", location: str = "",
+                min_budget: int = 0, max_budget: int = 0, examples: int = 5) -> dict:
+    where, params = ["award_amount > 0"], []
+    if industry:
+        where.append("industries LIKE ?")
+        params.append(f"%{industry}%")
+    for kw in keyword.split():
+        where.append("(title LIKE ? OR category LIKE ?)")
+        params += [f"%{kw}%"] * 2
+    if location:
+        where.append("location LIKE ?")
+        params.append(f"%{location.replace('台', '臺')}%")
+    if min_budget:
+        where.append("budget >= ?")
+        params.append(min_budget)
+    if max_budget:
+        where.append("budget <= ?")
+        params.append(max_budget)
+    with connect() as conn:
+        rows = [dict(r) for r in conn.execute(
+            "SELECT * FROM awards WHERE " + " AND ".join(where) + " ORDER BY award_date DESC", params)]
+    if not rows:
+        return {"樣本數": 0}
+
+    amounts = sorted(r["award_amount"] for r in rows)
+    ratios = [r["award_amount"] / r["budget"] for r in rows if r["budget"]]
+    bidders = [r["bidders"] for r in rows if r["bidders"]]
+    winners: dict[str, dict] = {}
+    sme_flags = []
+    for r in rows:
+        names = [n for n in (r["winners"] or "").split("、") if n]
+        smes = (r["winner_sme"] or "").split("、")
+        for i, name in enumerate(names):
+            w = winners.setdefault(name, {"得標件數": 0, "得標總額": 0})
+            w["得標件數"] += 1
+            w["得標總額"] += r["award_amount"] // max(len(names), 1)
+            if i < len(smes) and smes[i]:
+                sme_flags.append(smes[i] == "是")
+    top = sorted(winners.items(), key=lambda kv: (-kv[1]["得標件數"], -kv[1]["得標總額"]))[:5]
+
+    return {
+        "樣本數": len(rows),
+        "資料期間": f"{rows[-1]['award_date']} ～ {rows[0]['award_date']}",
+        "決標金額中位數": amounts[len(amounts) // 2],
+        "決標金額範圍": [amounts[0], amounts[-1]],
+        "平均決標價／預算": round(sum(ratios) / len(ratios), 3) if ratios else None,
+        "平均投標家數": round(sum(bidders) / len(bidders), 1) if bidders else None,
+        "只有 1 家投標的比例": round(sum(1 for b in bidders if b == 1) / len(bidders), 2) if bidders else None,
+        "得標者為中小企業比例": round(sum(sme_flags) / len(sme_flags), 2) if sme_flags else None,
+        "得標最多的廠商": [{"廠商": n, **v} for n, v in top],
+        "近期案例": rows[:examples],
+    }
+
+
+# ===========================================================================
+# 趨勢
+# ===========================================================================
+
+def save_daily_counts(date: str, counts: dict[str, int]) -> None:
+    """寫入當日各產業標案數，預算總額由 tenders 表計算（沒有明細時為 NULL）"""
+    with connect() as conn:
+        for industry, n in counts.items():
+            total = conn.execute(
+                "SELECT SUM(budget) FROM tenders WHERE fetched_date = ? AND industries LIKE ?",
+                (date, f"%{industry}%")).fetchone()[0]
+            conn.execute("INSERT OR REPLACE INTO daily_stats (date, industry, tender_count, budget_total)"
+                         " VALUES (?, ?, ?, ?)", (date, industry, n, total))
+
+
+def trends(days: int = 30) -> dict:
+    with connect() as conn:
+        dates = [r[0] for r in conn.execute(
+            "SELECT DISTINCT date FROM daily_stats ORDER BY date DESC LIMIT ?", (days,))][::-1]
+        rows = conn.execute("SELECT * FROM daily_stats WHERE date >= ? ORDER BY date",
+                            (dates[0] if dates else "",)).fetchall()
+        award_rows = conn.execute("""
+            SELECT industries, COUNT(*) AS n, SUM(award_amount) AS total,
+                   AVG(CASE WHEN budget > 0 THEN award_amount * 1.0 / budget END) AS ratio,
+                   AVG(bidders) AS bidders
+            FROM awards GROUP BY industries""").fetchall()
+
+    series: dict[str, dict] = {}
+    for r in rows:
+        s = series.setdefault(r["industry"], {"counts": {}, "budgets": {}})
+        s["counts"][r["date"]] = r["tender_count"]
+        s["budgets"][r["date"]] = r["budget_total"]
+
+    # 決標統計：跨產業的案子拆到各產業
+    award_by_industry: dict[str, dict] = {}
+    for r in award_rows:
+        for ind in (r["industries"] or "").split("、"):
+            if not ind:
+                continue
+            a = award_by_industry.setdefault(ind, {"n": 0, "total": 0, "ratio_sum": 0.0, "ratio_n": 0, "bid_sum": 0.0})
+            a["n"] += r["n"]
+            a["total"] += r["total"] or 0
+            if r["ratio"] is not None:
+                a["ratio_sum"] += r["ratio"] * r["n"]
+                a["ratio_n"] += r["n"]
+            a["bid_sum"] += (r["bidders"] or 0) * r["n"]
+
+    return {
+        "dates": dates,
+        "industries": {
+            name: {"counts": [s["counts"].get(d) for d in dates],
+                   "budgets": [s["budgets"].get(d) for d in dates]}
+            for name, s in series.items()
+        },
+        "awards": {
+            name: {"count": a["n"], "total": a["total"],
+                   "avg_ratio": round(a["ratio_sum"] / a["ratio_n"], 3) if a["ratio_n"] else None,
+                   "avg_bidders": round(a["bid_sum"] / a["n"], 1) if a["n"] else None}
+            for name, a in award_by_industry.items()
+        },
+    }

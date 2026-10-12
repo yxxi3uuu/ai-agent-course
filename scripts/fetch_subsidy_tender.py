@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 fetch_subsidy_tender.py
-抓取每日政府標案與補助新聞，輸出成 pipeline 可讀的 txt（每篇以 ----- 分隔，第一行為標題）。
+抓取每日政府標案、決標結果與補助新聞。
+標案與補助輸出成 pipeline 可讀的 txt（每篇以 ----- 分隔，第一行為標題）；
+決標結果本身就是結構化資料，直接輸出 JSON，由 ingest 寫入資料庫。
 
 資料來源：
-1. 政府標案：g0v 政府採購網 API（pcc-api.openfun.app），依日期列出公告，再依產業關鍵字篩選
+1. 政府標案／決標：g0v 政府採購網 API（pcc-api.openfun.app），依日期列出公告，再依產業篩選
 2. 補助消息：Google 新聞 RSS 搜尋（僅供個人／課程使用，商用請改接官方公告來源）
 
 Usage:
@@ -87,10 +89,11 @@ def match_industries(title: str, category: str, industries: dict[str, dict]) -> 
 
 
 def list_tenders(date: str) -> list[dict]:
-    """該日公告列表；API 尚未收錄的日期會回傳 PHP 錯誤頁，視為無資料"""
+    """該日公告列表；API 尚未收錄的日期會回傳 PHP 錯誤頁，視為無資料。
+    連線失敗（OSError）則直接拋出，避免把「網路斷線」誤判成「沒有資料」"""
     try:
         return json.loads(http_get(f"{PCC_API}/listbydate?date={date}")).get("records") or []
-    except (json.JSONDecodeError, OSError):
+    except json.JSONDecodeError:
         return []
 
 
@@ -104,9 +107,33 @@ def latest_tender_date(start: str, max_back: int = 7) -> str | None:
     return None
 
 
-def fetch_tenders(date: str, config: dict, log=print) -> list[tuple[str, str]]:
+def fetch_detail(r: dict) -> dict:
+    """抓單筆公告明細；同案可能有多筆公告，取與這筆 filename 相同的那一筆"""
+    d = json.loads(http_get(f"{PCC_API}/tender?unit_id={urllib.parse.quote(r['unit_id'])}"
+                            f"&job_number={urllib.parse.quote(r['job_number'])}"))
+    for rec in d.get("records", []):
+        if rec.get("filename") == r.get("filename"):
+            return rec.get("detail", {})
+    return {}
+
+
+def industry_counts(records: list[dict], config: dict) -> dict[str, int]:
+    """當日各產業的招標公告數（趨勢圖用；只看列表，不需抓明細）"""
+    types = set(config.get("tender_types", []))
+    industries = config.get("industries", {})
+    counts = {name: 0 for name in industries}
+    for r in records:
+        brief = r.get("brief", {})
+        if types and brief.get("type") not in types:
+            continue
+        for tag in match_industries(brief.get("title", ""), brief.get("category", ""), industries):
+            counts[tag] += 1
+    return counts
+
+
+def fetch_tenders(date: str, config: dict, log=print, records: list[dict] | None = None) -> list[tuple[str, str]]:
     """回傳 [(標題, 內文)]"""
-    records = list_tenders(date)
+    records = records if records is not None else list_tenders(date)
     types = set(config.get("tender_types", []))
     industries = config.get("industries", {})
     log(f"  標案：{date} 共 {len(records)} 筆公告")
@@ -128,12 +155,7 @@ def fetch_tenders(date: str, config: dict, log=print) -> list[tuple[str, str]]:
         detail = {}
         if i < max_details:
             try:
-                d = json.loads(http_get(f"{PCC_API}/tender?unit_id={urllib.parse.quote(r['unit_id'])}"
-                                        f"&job_number={urllib.parse.quote(r['job_number'])}"))
-                # 同案可能有多筆公告，取與這筆 filename 相同的那一筆
-                for rec in d.get("records", []):
-                    if rec.get("filename") == r.get("filename"):
-                        detail = rec.get("detail", {})
+                detail = fetch_detail(r)
                 time.sleep(1)
             except Exception as e:
                 log(f"  ⚠️ 明細抓取失敗 {r['job_number']}: {e}")
@@ -156,6 +178,81 @@ def fetch_tenders(date: str, config: dict, log=print) -> list[tuple[str, str]]:
         lines.append(f"公告連結：{detail.get('url') or PCC_SITE + r.get('url', '')}")
         articles.append((title, "\n".join(lines)))
     return articles
+
+
+# ===========================================================================
+# 決標結果（得標行情）
+# ===========================================================================
+
+def _winners(detail: dict) -> list[dict]:
+    """從「投標廠商:投標廠商N:*」欄位整理出得標廠商"""
+    winners = []
+    for key, value in detail.items():
+        m = re.fullmatch(r"投標廠商:(投標廠商\d+):是否得標", key)
+        if m and value == "是":
+            prefix = f"投標廠商:{m.group(1)}"
+            winners.append({
+                "name": detail.get(f"{prefix}:廠商名稱", ""),
+                "amount": detail.get(f"{prefix}:決標金額", ""),
+                "sme": detail.get(f"{prefix}:是否為中小企業", ""),
+            })
+    return winners
+
+
+def fetch_awards(date: str, config: dict, log=print, records: list[dict] | None = None,
+                 stats: dict | None = None) -> list[dict]:
+    """回傳決標結果 [{title, unit, category, industries, budget, award_amount, ...}]；
+    stats 傳入 dict 時會記錄 attempted / failed 筆數"""
+    records = records if records is not None else list_tenders(date)
+    industries = config.get("industries", {})
+    hints = set(config.get("award_title_hints", []))
+    for rule in industries.values():
+        hints.update(rule.get("keywords", []))
+
+    # 列表沒有標的分類，先用標題粗篩，抓明細後再用分類精確判斷產業
+    candidates = [r for r in records
+                  if r.get("brief", {}).get("type") == "決標公告"
+                  and "契約變更" not in r["brief"].get("title", "")
+                  and any(h in r["brief"].get("title", "") for h in hints)]
+    max_details = config.get("max_award_details", 120)
+    log(f"  決標：{date} 共 {sum(1 for r in records if r.get('brief', {}).get('type') == '決標公告')} 筆，"
+        f"標題粗篩 {len(candidates)} 筆，抓取明細上限 {max_details} 筆")
+
+    awards = []
+    stats = stats if stats is not None else {}
+    stats.update(attempted=0, failed=0)
+    for r in candidates[:max_details]:
+        stats["attempted"] += 1
+        try:
+            detail = fetch_detail(r)
+            time.sleep(1)
+        except Exception as e:
+            stats["failed"] += 1
+            log(f"  ⚠️ 決標明細抓取失敗 {r['job_number']}: {e}")
+            continue
+        category = re.sub(r"[<>]", "", detail.get("採購資料:標的分類", ""))
+        title = oneline(detail.get("採購資料:標案名稱") or r["brief"].get("title"))
+        tags = match_industries(title, category, industries)
+        amount = detail.get("決標資料:總決標金額", "")
+        if not tags or not re.search(r"\d", amount):
+            continue
+        awards.append({
+            "url": detail.get("url") or PCC_SITE + r.get("url", ""),
+            "title": title,
+            "unit": detail.get("機關資料:機關名稱") or r.get("unit_name", ""),
+            "category": category,
+            "industries": "、".join(tags),
+            "budget": detail.get("採購資料:預算金額", ""),
+            "award_amount": amount,
+            "floor_price": detail.get("決標資料:底價金額", ""),
+            "bidders": detail.get("投標廠商:投標廠商家數", ""),
+            "winners": _winners(detail),
+            "method": detail.get("採購資料:決標方式", ""),
+            "award_date": detail.get("決標資料:決標日期", ""),
+            "location": detail.get("採購資料:履約地點", ""),
+        })
+    log(f"  決標：符合產業者 {len(awards)} 筆")
+    return awards
 
 
 # ===========================================================================
@@ -227,10 +324,17 @@ def fetch_all(date: str, outdir: Path, config: dict, log=print) -> dict:
     outdir.mkdir(parents=True, exist_ok=True)
     counts = {}
 
-    tenders = fetch_tenders(date, config, log)
+    records = list_tenders(date)
+    tenders = fetch_tenders(date, config, log, records=records)
     if tenders:
         write_articles(outdir / f"tenders_{date}.txt", tenders)
     counts["tenders"] = len(tenders)
+    (outdir / f"stats_{date}.json").write_text(
+        json.dumps(industry_counts(records, config), ensure_ascii=False), encoding="utf-8")
+
+    awards = fetch_awards(date, config, log, records=records)
+    (outdir / f"awards_{date}.json").write_text(json.dumps(awards, ensure_ascii=False, indent=1), encoding="utf-8")
+    counts["awards"] = len(awards)
 
     subsidies = fetch_subsidies(config, log)
     if subsidies:
@@ -253,7 +357,7 @@ def main():
         return 1
     outdir = Path(args.outdir) if args.outdir else Path("data/daily") / date / "raw"
     counts = fetch_all(date, outdir, config)
-    print(f"完成：標案 {counts['tenders']} 筆、補助新聞 {counts['subsidies']} 則 → {outdir}")
+    print(f"完成：標案 {counts['tenders']} 筆、決標 {counts['awards']} 筆、補助新聞 {counts['subsidies']} 則 → {outdir}")
 
 
 if __name__ == "__main__":

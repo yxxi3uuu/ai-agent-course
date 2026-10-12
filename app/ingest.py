@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-把 pipeline 整理好的 final/*.txt 寫進 SQLite，給 Agent 的 tools 查詢。
+把 pipeline 整理好的 final/*.txt（標案、補助）與決標 JSON 寫進 SQLite，給首頁與 Agent 查詢。
 
     python -m app.ingest data/daily/20261008/final
 """
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -81,6 +82,32 @@ def ingest(final_dir: Path, fetched_date: str) -> tuple[int, int]:
                 ))
                 n_subsidy += 1
     return n_tender, n_subsidy
+
+
+def ingest_awards(json_path: Path, fetched_date: str) -> int:
+    awards = json.loads(json_path.read_text(encoding="utf-8"))
+    with db.connect() as conn:
+        for a in awards:
+            winners = a.get("winners", [])
+            award_date = db.roc_to_iso(a.get("award_date"))
+            conn.execute("""
+                INSERT OR REPLACE INTO awards
+                (url, title, unit, industries, category, budget, award_amount, floor_price, bidders,
+                 winners, winner_sme, method, award_date, location, fetched_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", (
+                a["url"], a["title"], a.get("unit"), a.get("industries"), a.get("category"),
+                db.parse_amount(a.get("budget")),
+                db.parse_amount(a.get("award_amount")),
+                db.parse_amount(a.get("floor_price")),
+                db.parse_amount(a.get("bidders")),
+                "、".join(w["name"] for w in winners),
+                "、".join(w.get("sme", "") for w in winners),
+                a.get("method"),
+                award_date[:10] if award_date else None,
+                a.get("location"),
+                fetched_date,
+            ))
+    return len(awards)
 
 
 if __name__ == "__main__":

@@ -8,32 +8,36 @@
         :root {
             --bg: #f5f7fa; --card: #fff; --text: #333; --title: #1a1a2e; --muted: #888; --line: #eef0f3;
             --primary: #4a90d9; --primary-dark: #357abd; --primary-soft: #f0f7ff; --primary-border: #cfe2f7;
-            --danger: #e74c3c; --danger-soft: #fdecea; --good: #27ae60;
+            --danger: #e74c3c; --danger-soft: #fdecea; --star: #f5a623;
+            /* 圖表：類別色（依產業在設定中的順序固定配色）、軸線與格線 */
+            --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #eda100;
+            --series-5: #e87ba4; --series-6: #008300; --series-7: #4a3aa7; --series-8: #e34948;
+            --grid: #eceef1; --axis: #b9bec6;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif;
-            background: var(--bg); color: var(--text); min-height: 100vh;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
         a { color: var(--primary-dark); }
+        button { font-family: inherit; }
 
         /* 頁首 */
         header { background: var(--card); border-bottom: 1px solid var(--line); padding: 1rem 1.5rem; }
         .header-inner { max-width: 1300px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
         h1 { font-size: 1.4rem; color: var(--title); }
         .subtitle { color: #666; font-size: 0.85rem; margin-top: 0.15rem; }
-        .update-box { display: flex; align-items: center; gap: 0.6rem; font-size: 0.8rem; color: #666; flex-wrap: wrap; }
+        .update-box { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: #666; flex-wrap: wrap; }
         .pill { padding: 0.3rem 0.7rem; border-radius: 999px; background: var(--primary-soft); border: 1px solid var(--primary-border); color: var(--primary-dark); white-space: nowrap; }
         .pill.running { background: #fff8e6; border-color: #f5d48a; color: #a06a00; }
         .pill.error { background: var(--danger-soft); border-color: #f5b7b1; color: #c0392b; }
-        .btn-small { padding: 0.3rem 0.8rem; border: 1px solid #ddd; background: #f0f0f0; border-radius: 6px; font-size: 0.78rem; color: #555; cursor: pointer; }
-        .btn-small:hover:not(:disabled) { background: var(--primary-soft); border-color: var(--primary); }
+        .btn-small { padding: 0.3rem 0.8rem; border: 1px solid #ddd; background: #f0f0f0; border-radius: 6px; font-size: 0.78rem; color: #555; cursor: pointer; white-space: nowrap; text-decoration: none; display: inline-block; }
+        .btn-small:hover:not(:disabled) { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-dark); }
         .btn-small:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .layout { max-width: 1300px; margin: 0 auto; padding: 1.2rem 1.5rem 2rem; display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 1.2rem; align-items: start; }
         .card { background: var(--card); border-radius: 12px; padding: 1.2rem 1.4rem; box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-bottom: 1.2rem; }
-        .card h2 { font-size: 1.05rem; color: var(--title); display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.8rem; }
+        .card h2 { font-size: 1.05rem; color: var(--title); display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.8rem; flex-wrap: wrap; }
         .card h2 .count { font-size: 0.78rem; color: var(--muted); font-weight: 400; }
+        .card h2 .actions { margin-left: auto; display: flex; gap: 0.4rem; }
+        .hint { font-size: 0.82rem; color: var(--muted); }
 
         /* 統計 */
         .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.8rem; margin-bottom: 1.2rem; }
@@ -51,19 +55,36 @@
         .search:focus { outline: none; border-color: var(--primary); }
 
         /* 標案列表 */
-        .tender { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.3rem 1rem; padding: 0.8rem 0; border-bottom: 1px solid var(--line); }
+        .tender { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 0.3rem 0.8rem; padding: 0.8rem 0; border-bottom: 1px solid var(--line); align-items: start; }
         .tender:last-child { border-bottom: none; }
+        .star { grid-row: span 2; background: none; border: none; font-size: 1.15rem; line-height: 1.3; cursor: pointer; color: #c8ccd2; padding: 0 0.1rem; }
+        .star:hover { color: var(--star); }
+        .star.on { color: var(--star); }
         .tender .name { font-weight: 600; font-size: 0.92rem; line-height: 1.45; color: var(--title); text-decoration: none; }
         .tender .name:hover { color: var(--primary-dark); text-decoration: underline; }
         .tender .budget { font-weight: 700; color: var(--title); white-space: nowrap; text-align: right; font-size: 0.92rem; }
         .tender .meta { font-size: 0.78rem; color: var(--muted); display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
         .tag { padding: 0.05rem 0.45rem; border-radius: 4px; background: var(--primary-soft); color: var(--primary-dark); font-size: 0.72rem; }
         .due { padding: 0.05rem 0.45rem; border-radius: 4px; background: var(--danger-soft); color: #c0392b; font-size: 0.72rem; font-weight: 600; }
-        .ask { justify-self: end; padding: 0.2rem 0.6rem; font-size: 0.75rem; border: 1px solid var(--primary-border); background: var(--primary-soft); color: var(--primary-dark); border-radius: 6px; cursor: pointer; white-space: nowrap; }
+        .row-actions { display: flex; gap: 0.3rem; justify-self: end; }
+        .ask { padding: 0.2rem 0.6rem; font-size: 0.75rem; border: 1px solid var(--primary-border); background: var(--primary-soft); color: var(--primary-dark); border-radius: 6px; cursor: pointer; white-space: nowrap; text-decoration: none; }
         .ask:hover { background: #e3f0fd; }
         .more { width: 100%; margin-top: 0.6rem; padding: 0.5rem; border: 1px dashed #ccc; background: #fafbfc; border-radius: 8px; color: #666; cursor: pointer; font-size: 0.85rem; }
         .more:hover { border-color: var(--primary); color: var(--primary-dark); }
-        .empty { text-align: center; color: #aaa; padding: 1.5rem 0; font-size: 0.88rem; }
+        .empty { text-align: center; color: #aaa; padding: 1.2rem 0; font-size: 0.88rem; }
+
+        /* 我的追蹤 */
+        .fav { display: grid; grid-template-columns: 4.6rem minmax(0, 1fr) auto; gap: 0.2rem 0.8rem; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid var(--line); }
+        .fav:last-child { border-bottom: none; }
+        .countdown { grid-row: span 2; text-align: center; border-radius: 8px; padding: 0.35rem 0.2rem; background: #f4f5f7; }
+        .countdown .d { font-size: 1.2rem; font-weight: 700; color: var(--title); line-height: 1.1; }
+        .countdown .u { font-size: 0.68rem; color: var(--muted); }
+        .countdown.urgent { background: var(--danger-soft); }
+        .countdown.urgent .d, .countdown.urgent .u { color: #c0392b; }
+        .countdown.closed { opacity: 0.55; }
+        .fav .name { font-weight: 600; font-size: 0.88rem; color: var(--title); text-decoration: none; line-height: 1.4; }
+        .fav .name:hover { text-decoration: underline; }
+        .fav .meta { font-size: 0.76rem; color: var(--muted); }
 
         .subsidy { padding: 0.65rem 0; border-bottom: 1px solid var(--line); }
         .subsidy:last-child { border-bottom: none; }
@@ -71,19 +92,34 @@
         .subsidy a:hover { color: var(--primary-dark); text-decoration: underline; }
         .subsidy .meta { font-size: 0.76rem; color: var(--muted); margin-top: 0.2rem; }
 
+        /* 圖表 */
+        .chart-title { font-size: 0.88rem; font-weight: 600; color: var(--title); margin: 0.2rem 0 0.15rem; }
+        .chart-sub { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.4rem; }
+        .chart-wrap { position: relative; }
+        .chart-wrap svg { display: block; width: 100%; height: auto; overflow: visible; }
+        .chart-wrap svg.bars { max-width: 460px; }
+        .chart-wrap text { font-family: inherit; }
+        .legend { display: flex; gap: 0.9rem; flex-wrap: wrap; font-size: 0.76rem; color: #555; margin: 0.2rem 0 0.4rem; }
+        .legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
+        .legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+        .tooltip { position: absolute; pointer-events: none; background: #fff; border: 1px solid #e3e5e8; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.12); padding: 0.45rem 0.6rem; font-size: 0.75rem; color: var(--text); white-space: nowrap; display: none; z-index: 5; }
+        .tooltip b { color: var(--title); }
+        .tooltip .row { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.15rem; }
+        .tooltip .row i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .tooltip .row .v { margin-left: auto; padding-left: 0.8rem; font-weight: 600; color: var(--title); }
+        .chart-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 1.4rem; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.76rem; margin-top: 0.5rem; }
+        .data-table th, .data-table td { padding: 0.3rem 0.35rem; text-align: right; border-bottom: 1px solid var(--line); }
+        .data-table th:first-child, .data-table td:first-child { text-align: left; }
+        .data-table th { color: var(--muted); font-weight: 500; }
         details.usage { font-size: 0.8rem; color: #666; }
-        details.usage summary { cursor: pointer; }
-        table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
-        th, td { padding: 0.3rem 0.2rem; text-align: right; border-bottom: 1px solid var(--line); }
-        th:first-child, td:first-child { text-align: left; }
-        th { color: var(--muted); font-weight: 500; }
+        details summary { cursor: pointer; }
 
         /* 對話 */
-        .chat { position: sticky; top: 1rem; height: calc(100vh - 2rem); max-height: 860px; display: flex; flex-direction: column; padding: 0; overflow: hidden; margin-bottom: 0; }
+        .chat { position: sticky; top: 1rem; height: calc(100vh - 2rem); max-height: 880px; display: flex; flex-direction: column; padding: 0; overflow: hidden; margin-bottom: 0; }
         .chat-head { padding: 0.9rem 1.2rem 0.7rem; border-bottom: 1px solid var(--line); }
         .chat-head h2 { margin-bottom: 0.4rem; }
         .profile { display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center; font-size: 0.75rem; color: var(--muted); }
-        .profile .tag { font-size: 0.72rem; }
         .link-btn { background: none; border: none; color: var(--muted); font-size: 0.72rem; cursor: pointer; text-decoration: underline; margin-left: auto; }
         .link-btn:hover { color: var(--danger); }
         .messages { flex: 1; overflow-y: auto; padding: 1rem 1.2rem; background: #f8fafc; }
@@ -105,19 +141,40 @@
         .btn:hover:not(:disabled) { background: var(--primary-dark); }
         .btn:disabled { background: #b0c4de; cursor: not-allowed; }
 
+        /* 產業設定 */
+        dialog { border: none; border-radius: 12px; padding: 0; width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 48px); box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        dialog::backdrop { background: rgba(20, 24, 33, 0.45); }
+        .dlg-head { padding: 1rem 1.3rem; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
+        .dlg-head h3 { font-size: 1.05rem; color: var(--title); }
+        .dlg-body { padding: 1rem 1.3rem; overflow-y: auto; max-height: calc(100vh - 200px); }
+        .dlg-foot { padding: 0.8rem 1.3rem; border-top: 1px solid var(--line); display: flex; gap: 0.6rem; align-items: center; }
+        .dlg-foot .err { color: #c0392b; font-size: 0.82rem; flex: 1; }
+        .ind { border: 1px solid #e3e5e8; border-radius: 10px; padding: 0.8rem 0.9rem; margin-bottom: 0.8rem; }
+        .ind-top { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.6rem; }
+        .ind-top input { font-size: 0.95rem; font-weight: 600; padding: 0.3rem 0.5rem; border: 1px solid #ddd; border-radius: 6px; width: 12rem; }
+        .ind-top .del { margin-left: auto; }
+        .field { font-size: 0.78rem; color: #666; margin: 0.35rem 0 0.25rem; }
+        .codes { display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center; }
+        .code { padding: 0.15rem 0.5rem; background: var(--primary-soft); border: 1px solid var(--primary-border); border-radius: 999px; font-size: 0.76rem; color: var(--primary-dark); }
+        .code button { background: none; border: none; color: var(--muted); cursor: pointer; margin-left: 0.2rem; }
+        .code button:hover { color: var(--danger); }
+        .codes select { font-size: 0.78rem; padding: 0.2rem; border: 1px solid #ddd; border-radius: 6px; max-width: 16rem; }
+        .ind textarea { width: 100%; font-size: 0.82rem; padding: 0.4rem 0.5rem; border: 1px solid #ddd; border-radius: 6px; font-family: inherit; resize: vertical; min-height: 2.4rem; }
+
         .fab { display: none; }
 
         @media (max-width: 980px) {
             .layout { grid-template-columns: 1fr; padding: 1rem; }
             .chat { position: static; height: 80vh; }
             .stats { grid-template-columns: repeat(2, 1fr); }
+            .chart-grid { grid-template-columns: 1fr; }
             .fab { display: block; position: fixed; right: 16px; bottom: 16px; padding: 0.7rem 1.1rem; border-radius: 999px; border: none; background: var(--primary); color: #fff; font-weight: 600; box-shadow: 0 4px 14px rgba(0,0,0,0.2); cursor: pointer; z-index: 10; }
         }
         @media (max-width: 560px) {
             header { padding: 0.9rem 1rem; }
-            .tender { grid-template-columns: 1fr; }
-            .tender .budget { text-align: left; }
-            .ask { justify-self: start; }
+            .tender { grid-template-columns: auto minmax(0, 1fr); }
+            .tender .budget { text-align: left; grid-column: 2; }
+            .row-actions { grid-column: 2; justify-self: start; }
         }
     </style>
 </head>
@@ -126,11 +183,12 @@
     <div class="header-inner">
         <div>
             <h1>🤖 標案補助小幫手</h1>
-            <p class="subtitle">每天自動整理政府電子採購網新標案與補助消息，再由 AI 依你的公司條件推薦</p>
+            <p class="subtitle">每天自動整理政府電子採購網新標案、得標行情與補助消息，再由 AI 依你的公司條件推薦</p>
         </div>
         <div class="update-box">
             <span class="pill" id="update-pill">載入中…</span>
             <button class="btn-small" id="update-btn">立即更新</button>
+            <button class="btn-small" id="settings-btn">⚙️ 產業設定</button>
         </div>
     </div>
 </header>
@@ -139,8 +197,17 @@
     <main>
         <div class="stats" id="stats"></div>
 
+        <div class="card" id="fav-card">
+            <h2>⭐ 我的追蹤 <span class="count" id="fav-count"></span>
+                <span class="actions"><a class="btn-small" id="fav-ics" href="#">📅 全部加入行事曆</a></span>
+            </h2>
+            <div id="favorites"></div>
+        </div>
+
         <div class="card">
-            <h2>🏛️ 最新招標案 <span class="count" id="tender-count"></span></h2>
+            <h2>🏛️ 最新招標案 <span class="count" id="tender-count"></span>
+                <span class="actions"><a class="btn-small" id="export-xlsx" href="#">⬇️ 匯出 Excel</a></span>
+            </h2>
             <div class="filters">
                 <div id="industry-chips" style="display:flex;gap:0.4rem;flex-wrap:wrap"></div>
                 <input class="search" id="search" placeholder="搜尋案名、機關或地區">
@@ -150,14 +217,46 @@
         </div>
 
         <div class="card">
+            <h2>📈 趨勢與得標行情</h2>
+            <div class="chart-grid">
+                <div>
+                    <div class="chart-title">每日新招標案數</div>
+                    <div class="chart-sub" id="trend-sub"></div>
+                    <div class="legend" id="trend-legend"></div>
+                    <div class="chart-wrap" id="trend-chart"><div class="tooltip" id="trend-tip"></div></div>
+                </div>
+                <div>
+                    <div class="chart-title">平均決標價占預算</div>
+                    <div class="chart-sub" id="award-sub">越低代表越常以低於預算得標</div>
+                    <div class="chart-wrap" id="award-chart"><div class="tooltip" id="award-tip"></div></div>
+                </div>
+            </div>
+            <details style="margin-top:0.8rem">
+                <summary class="hint">📋 以表格檢視</summary>
+                <div id="trend-table"></div>
+            </details>
+        </div>
+
+        <div class="card">
             <h2>💰 補助／獎勵消息 <span class="count" id="subsidy-count"></span></h2>
             <div id="subsidies"></div>
         </div>
 
         <div class="card">
+            <h2>🧪 AI 自動評估 <span class="count" id="eval-meta"></span>
+                <span class="actions"><button class="btn-small" id="eval-btn">執行評估</button></span>
+            </h2>
+            <div id="eval-summary" class="hint">尚未執行。評估會用 21 題測試題（標準答案即時由資料庫計算）檢查查詢正確率、工具選擇、護欄與是否編造連結。</div>
+            <details style="margin-top:0.6rem" id="eval-details-wrap">
+                <summary class="hint">逐題結果</summary>
+                <div id="eval-details"></div>
+            </details>
+        </div>
+
+        <div class="card">
             <details class="usage">
                 <summary>📊 系統用量（AI 對話與 token）</summary>
-                <table id="usage"></table>
+                <table class="data-table" id="usage"></table>
             </details>
         </div>
     </main>
@@ -178,17 +277,36 @@
 </div>
 <button class="fab" id="fab">💬 問小幫手</button>
 
+<dialog id="settings">
+    <div class="dlg-head">
+        <h3>⚙️ 產業設定</h3>
+        <button class="btn-small" id="settings-close">關閉</button>
+    </div>
+    <div class="dlg-body">
+        <p class="hint" style="margin-bottom:0.8rem">
+            每個產業用「標的分類」（政府採購的標準代碼，最準確）和「標題關鍵字」來挑選標案。
+            分類以字首比對，例如「勞務類84」包含 841～849 所有電腦相關服務。存檔後，<b>下次更新資料時生效</b>。
+        </p>
+        <div id="ind-list"></div>
+        <button class="more" id="ind-add">＋ 新增產業</button>
+    </div>
+    <div class="dlg-foot">
+        <span class="err" id="ind-err"></span>
+        <button class="btn-small" id="ind-cancel">取消</button>
+        <button class="btn" id="ind-save" style="padding:0.45rem 1.2rem">儲存</button>
+    </div>
+</dialog>
+
 <script>
-const INDUSTRIES = ["全部", "資訊軟體", "行銷設計", "教育訓練", "顧問研究"];
 const SUGGESTIONS = [
     "我是台中 10 人的軟體公司，有什麼標案？",
-    "預算 500 萬以上的呢？",
-    "第一個案子的押標金和資格？",
+    "這類資訊系統案通常幾折得標？誰常得標？",
+    "我收藏的案子哪個最快截止？",
     "最近有什麼企業可以申請的補助？",
 ];
 const PAGE = 20;
 const $ = (id) => document.getElementById(id);
-let allTenders = [], shown = PAGE, industry = "全部";
+let allTenders = [], lastDigest = { tenders: [], subsidies: [] }, shown = PAGE, industry = "全部", industryNames = [], favUrls = new Set();
 
 function getUserId() {
     let id = null;
@@ -212,11 +330,41 @@ function daysLeft(deadline) {
     if (!deadline) return null;
     return Math.ceil((new Date(deadline.replace(" ", "T")) - new Date()) / 86400000);
 }
+function seriesColor(name) {
+    const i = industryNames.indexOf(name);
+    return i >= 0 && i < 8 ? `var(--series-${i + 1})` : "#9aa1ab";
+}
+async function api(url, opts) {
+    const r = await fetch(url, opts);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.detail || `HTTP ${r.status}`);
+    return data;
+}
+const jsonBody = (method, body) => ({ method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+
+/* ---------------- 產業清單 ---------------- */
+
+async function loadIndustries() {
+    const data = await api("/api/industries");
+    industryNames = Object.keys(data.industries);
+    if (industry !== "全部" && !industryNames.includes(industry)) industry = "全部";
+    $("industry-chips").innerHTML = ["全部", ...industryNames]
+        .map((x) => `<span class="chip ${x === industry ? "active" : ""}" data-v="${esc(x)}">${esc(x)}</span>`).join("");
+    return data;
+}
+$("industry-chips").addEventListener("click", (e) => {
+    const v = e.target.dataset.v;
+    if (!v) return;
+    industry = v; shown = PAGE;
+    document.querySelectorAll("#industry-chips .chip").forEach((c) => c.classList.toggle("active", c.dataset.v === v));
+    renderTenders();
+});
 
 /* ---------------- 每日資訊 ---------------- */
 
 async function loadDigest() {
-    const data = await fetch("/api/digest").then((r) => r.json());
+    const data = await api("/api/digest");
+    lastDigest = data;
     allTenders = data.tenders;
     renderStats(data);
     renderTenders();
@@ -225,27 +373,34 @@ async function loadDigest() {
 
 function renderStats(data) {
     const soon = data.tenders.filter((t) => { const d = daysLeft(t.deadline); return d !== null && d <= 3; }).length;
-    const industries = new Set(data.tenders.flatMap((t) => (t.industries || "").split("、")).filter(Boolean));
     $("stats").innerHTML = [
         [data.tenders.length, "未截止新標案", ""],
         [soon, "3 天內截止", soon ? "warn" : ""],
         [data.subsidies.length, "補助消息", ""],
-        [industries.size, "追蹤產業", ""],
+        [favUrls.size, "我的追蹤", ""],
     ].map(([n, l, c]) => `<div class="stat"><div class="num ${c}">${n}</div><div class="label">${l}</div></div>`).join("");
 }
 
 function filteredTenders() {
     const q = $("search").value.trim();
     return allTenders.filter((t) =>
-        (industry === "全部" || (t.industries || "").includes(industry)) &&
+        (industry === "全部" || (t.industries || "").split("、").includes(industry)) &&
         (!q || [t.title, t.unit, t.location].some((v) => (v || "").includes(q))));
+}
+
+function updateExportLink() {
+    const params = new URLSearchParams();
+    if (industry !== "全部") params.set("industry", industry);
+    if ($("search").value.trim()) params.set("q", $("search").value.trim());
+    $("export-xlsx").href = "/api/export/tenders.xlsx?" + params;
 }
 
 function renderTenders() {
     const list = filteredTenders();
+    updateExportLink();
     $("tender-count").textContent = `${list.length} 件`;
     if (!list.length) {
-        $("tenders").innerHTML = `<div class="empty">${allTenders.length ? "沒有符合條件的標案" : "還沒有資料，按右上角「立即更新」抓取（約 3～5 分鐘）"}</div>`;
+        $("tenders").innerHTML = `<div class="empty">${allTenders.length ? "沒有符合條件的標案" : "還沒有資料，按右上角「立即更新」抓取（約 5～8 分鐘）"}</div>`;
         $("more").style.display = "none";
         return;
     }
@@ -253,11 +408,13 @@ function renderTenders() {
         const d = daysLeft(t.deadline);
         const due = d !== null && d <= 3 ? `<span class="due">剩 ${Math.max(d, 0)} 天</span>` : "";
         const tags = (t.industries || "").split("、").filter(Boolean).map((x) => `<span class="tag">${esc(x)}</span>`).join("");
+        const on = favUrls.has(t.url);
         return `<div class="tender">
+            <button class="star ${on ? "on" : ""}" data-i="${i}" title="${on ? "取消追蹤" : "加入追蹤"}" aria-label="${on ? "取消追蹤" : "加入追蹤"}">${on ? "★" : "☆"}</button>
             <a class="name" href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.title)}</a>
             <div class="budget">${esc(t.budget)}</div>
             <div class="meta">${tags}<span>${esc(t.unit)}</span><span>📍${esc((t.location || "").replace(/\(.*\)/, ""))}</span><span>⏰ ${esc(t.deadline || "截止日未知")}</span>${due}</div>
-            <button class="ask" data-i="${i}">問小幫手</button>
+            <div class="row-actions"><button class="ask" data-i="${i}">問小幫手</button></div>
         </div>`;
     }).join("");
     const rest = list.length - shown;
@@ -273,28 +430,230 @@ function renderSubsidies(list) {
     </div>`).join("") : `<div class="empty">目前沒有補助消息</div>`;
 }
 
-$("industry-chips").innerHTML = INDUSTRIES.map((x) => `<span class="chip ${x === industry ? "active" : ""}" data-v="${x}">${x}</span>`).join("");
-$("industry-chips").addEventListener("click", (e) => {
-    const v = e.target.dataset.v;
-    if (!v) return;
-    industry = v; shown = PAGE;
-    document.querySelectorAll("#industry-chips .chip").forEach((c) => c.classList.toggle("active", c.dataset.v === v));
-    renderTenders();
-});
 $("search").addEventListener("input", () => { shown = PAGE; renderTenders(); });
 $("more").addEventListener("click", () => { shown += PAGE; renderTenders(); });
-$("tenders").addEventListener("click", (e) => {
-    if (!e.target.classList.contains("ask")) return;
-    const t = filteredTenders()[Number(e.target.dataset.i)];
-    send(`幫我看這個標案的廠商資格、押標金和截止日：${t.title}\n${t.url}`);
-    $("chat").scrollIntoView({ behavior: "smooth" });
+$("tenders").addEventListener("click", async (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    const t = filteredTenders()[Number(btn.dataset.i)];
+    if (btn.classList.contains("star")) {
+        await toggleFavorite(t.url);
+    } else if (btn.classList.contains("ask")) {
+        send(`幫我看這個標案的廠商資格、押標金和截止日：${t.title}\n${t.url}`);
+        $("chat").scrollIntoView({ behavior: "smooth" });
+    }
 });
+
+/* ---------------- 我的追蹤 ---------------- */
+
+async function loadFavorites() {
+    const data = await api(`/api/favorites?user_id=${encodeURIComponent(userId)}`);
+    favUrls = new Set(data.favorites.map((f) => f.url));
+    $("fav-count").textContent = data.favorites.length ? `${data.favorites.length} 件` : "";
+    $("fav-ics").style.display = data.favorites.length ? "" : "none";
+    $("fav-ics").href = `/api/export/favorites.ics?user_id=${encodeURIComponent(userId)}`;
+    $("favorites").innerHTML = data.favorites.length ? data.favorites.map((f) => {
+        const d = daysLeft(f.deadline);
+        const cls = d === null ? "" : d < 0 ? "closed" : d <= 3 ? "urgent" : "";
+        const big = d === null ? "?" : d < 0 ? "—" : d;
+        const unit = d === null ? "截止日未知" : d < 0 ? "已截止" : "天後截止";
+        return `<div class="fav">
+            <div class="countdown ${cls}"><div class="d">${big}</div><div class="u">${unit}</div></div>
+            <a class="name" href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.title)}</a>
+            <div class="row-actions" style="grid-row: span 2">
+                <a class="ask" href="/api/export/tender.ics?url=${encodeURIComponent(f.url)}" title="加入行事曆">📅</a>
+                <button class="ask" data-url="${esc(f.url)}" title="取消追蹤">✕</button>
+            </div>
+            <div class="meta">${esc(f.unit)}・${esc(f.budget)}・⏰ ${esc(f.deadline || "請看公告")}</div>
+        </div>`;
+    }).join("") : `<div class="hint">在下方標案按 ☆ 加入追蹤，這裡會顯示截止倒數；也可以一鍵加到行事曆，截止前一天提醒你。</div>`;
+}
+
+async function toggleFavorite(url) {
+    if (favUrls.has(url)) {
+        await api(`/api/favorites?user_id=${encodeURIComponent(userId)}&url=${encodeURIComponent(url)}`, { method: "DELETE" });
+    } else {
+        await api("/api/favorites", jsonBody("POST", { user_id: userId, url }));
+    }
+    await loadFavorites();
+    renderTenders();
+    renderStats(lastDigest);
+}
+$("favorites").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-url]");
+    if (btn) toggleFavorite(btn.dataset.url);
+});
+
+/* ---------------- 趨勢圖 ---------------- */
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+function svgEl(tag, attrs, text) {
+    const el = document.createElementNS(SVG_NS, tag);
+    for (const [k, v] of Object.entries(attrs || {})) el.setAttribute(k, v);
+    if (text !== undefined) el.textContent = text;
+    return el;
+}
+function niceMax(v) {
+    if (v <= 0) return 10;
+    const p = Math.pow(10, Math.floor(Math.log10(v)));
+    return [1, 2, 2.5, 5, 10].map((m) => m * p).find((m) => m >= v);
+}
+const shortDate = (d) => `${Number(d.slice(4, 6))}/${Number(d.slice(6, 8))}`;
+
+function drawTrend(data) {
+    const box = $("trend-chart");
+    box.querySelectorAll("svg").forEach((s) => s.remove());
+    const names = industryNames.filter((n) => data.industries[n]);
+    const dates = data.dates;
+    if (!dates.length || !names.length) {
+        $("trend-sub").textContent = "資料累積中，更新幾天後就會出現走勢";
+        return;
+    }
+    $("trend-sub").textContent = `${fmtDate(dates[0])} ～ ${fmtDate(dates[dates.length - 1])}，共 ${dates.length} 個公告日`;
+    $("trend-legend").innerHTML = names.map((n) => `<span><i style="background:${seriesColor(n)}"></i>${esc(n)}</span>`).join("");
+
+    const W = 560, H = 230, m = { l: 34, r: 74, t: 10, b: 24 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const maxV = niceMax(Math.max(...names.flatMap((n) => data.industries[n].counts.map((v) => v || 0))));
+    const x = (i) => m.l + (dates.length === 1 ? iw / 2 : (i / (dates.length - 1)) * iw);
+    const y = (v) => m.t + ih - (v / maxV) * ih;
+    const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "每日新招標案數折線圖" });
+
+    for (let k = 0; k <= 4; k++) {
+        const v = (maxV / 4) * k, yy = y(v);
+        svg.appendChild(svgEl("line", { x1: m.l, x2: m.l + iw, y1: yy, y2: yy, stroke: k ? "var(--grid)" : "var(--axis)", "stroke-width": 1 }));
+        svg.appendChild(svgEl("text", { x: m.l - 6, y: yy + 4, "text-anchor": "end", "font-size": 10, fill: "#8a8f98" }, Math.round(v)));
+    }
+    const step = Math.max(1, Math.ceil(dates.length / 6));
+    dates.forEach((d, i) => {
+        // 固定間距標日期；最後一天一定標，太靠近最後一天的就略過避免重疊
+        if ((i % step === 0 && dates.length - 1 - i >= step / 2) || i === dates.length - 1)
+            svg.appendChild(svgEl("text", { x: x(i), y: H - 6, "text-anchor": "middle", "font-size": 10, fill: "#8a8f98" }, shortDate(d)));
+    });
+
+    // 線條 + 線尾直接標示（避免標籤重疊：依數值排序後最小間距 12px）
+    const ends = [];
+    names.forEach((n) => {
+        const vals = data.industries[n].counts;
+        const pts = vals.map((v, i) => (v === null || v === undefined ? null : [x(i), y(v)]));
+        let dPath = "", pen = false;
+        pts.forEach((p) => { if (!p) { pen = false; return; } dPath += (pen ? "L" : "M") + p[0].toFixed(1) + "," + p[1].toFixed(1); pen = true; });
+        svg.appendChild(svgEl("path", { d: dPath, fill: "none", stroke: seriesColor(n), "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+        const lastIdx = vals.map((v) => v !== null && v !== undefined).lastIndexOf(true);
+        if (lastIdx >= 0) ends.push({ n, y: y(vals[lastIdx]), v: vals[lastIdx] });
+    });
+    ends.sort((a, b) => a.y - b.y);
+    for (let i = 1; i < ends.length; i++) ends[i].y = Math.max(ends[i].y, ends[i - 1].y + 12);
+    ends.forEach((e) => svg.appendChild(svgEl("text", { x: m.l + iw + 6, y: e.y + 4, "font-size": 10.5, fill: "#52514e" }, `${e.n} ${e.v}`)));
+
+    // 滑鼠十字線 + 提示框
+    const cross = svgEl("line", { y1: m.t, y2: m.t + ih, stroke: "#b9bec6", "stroke-width": 1, visibility: "hidden" });
+    svg.appendChild(cross);
+    const dots = names.map((n) => {
+        const c = svgEl("circle", { r: 4.5, fill: seriesColor(n), stroke: "#fff", "stroke-width": 2, visibility: "hidden" });
+        svg.appendChild(c);
+        return c;
+    });
+    const hit = svgEl("rect", { x: m.l, y: m.t, width: iw, height: ih, fill: "transparent" });
+    svg.appendChild(hit);
+    const tip = $("trend-tip");
+    hit.addEventListener("mousemove", (ev) => {
+        const rect = svg.getBoundingClientRect();
+        const px = ((ev.clientX - rect.left) / rect.width) * W;
+        const i = Math.max(0, Math.min(dates.length - 1, Math.round(((px - m.l) / iw) * (dates.length - 1))));
+        cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("visibility", "visible");
+        const rows = names.map((n, k) => {
+            const v = data.industries[n].counts[i];
+            if (v === null || v === undefined) { dots[k].setAttribute("visibility", "hidden"); return ""; }
+            dots[k].setAttribute("cx", x(i)); dots[k].setAttribute("cy", y(v)); dots[k].setAttribute("visibility", "visible");
+            return { n, v };
+        }).filter(Boolean).sort((a, b) => b.v - a.v);
+        tip.innerHTML = `<b>${fmtDate(dates[i])}</b>` + rows.map((r) => `<div class="row"><i style="background:${seriesColor(r.n)}"></i>${esc(r.n)}<span class="v">${r.v} 件</span></div>`).join("");
+        tip.style.display = "block";
+        const left = (x(i) / W) * rect.width;
+        tip.style.left = (left > rect.width * 0.6 ? left - tip.offsetWidth - 12 : left + 12) + "px";
+        tip.style.top = "8px";
+    });
+    hit.addEventListener("mouseleave", () => {
+        tip.style.display = "none"; cross.setAttribute("visibility", "hidden");
+        dots.forEach((d) => d.setAttribute("visibility", "hidden"));
+    });
+    box.appendChild(svg);
+}
+
+function drawAwards(data) {
+    const box = $("award-chart");
+    box.querySelectorAll("svg, .empty").forEach((s) => s.remove());
+    const rows = industryNames.filter((n) => data.awards[n] && data.awards[n].avg_ratio !== null)
+        .map((n) => ({ n, ...data.awards[n] }));
+    if (!rows.length) {
+        box.insertAdjacentHTML("beforeend", `<div class="empty">決標資料累積中</div>`);
+        return;
+    }
+    // 單一數列：用同一個主色，產業名稱寫在左側
+    const rowH = 34, W = 380, m = { l: 66, r: 56, t: 4, b: 18 };
+    const H = m.t + rows.length * rowH + m.b, iw = W - m.l - m.r;
+    const x = (v) => m.l + v * iw;                       // 0～100%
+    const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "各產業平均決標價占預算比例長條圖", class: "bars" });
+    [0, 0.5, 1].forEach((v) => {
+        svg.appendChild(svgEl("line", { x1: x(v), x2: x(v), y1: m.t, y2: H - m.b, stroke: v === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": 1 }));
+        svg.appendChild(svgEl("text", { x: x(v), y: H - 4, "text-anchor": "middle", "font-size": 10, fill: "#8a8f98" }, `${v * 100}%`));
+    });
+    const tip = $("award-tip");
+    rows.forEach((r, i) => {
+        const yy = m.t + i * rowH + 7, bh = rowH - 14, bw = Math.max(r.avg_ratio * iw, 2);
+        svg.appendChild(svgEl("text", { x: m.l - 8, y: yy + bh / 2 + 4, "text-anchor": "end", "font-size": 11, fill: "#52514e" }, r.n));
+        // 長條：基線端直角、資料端 4px 圓角
+        svg.appendChild(svgEl("path", { d: `M${x(0)},${yy}h${bw - 4}a4,4 0 0 1 4,4v${bh - 8}a4,4 0 0 1 -4,4h${-(bw - 4)}z`, fill: "var(--series-1)" }));
+        svg.appendChild(svgEl("text", { x: x(0) + bw + 6, y: yy + bh / 2 + 4, "font-size": 11, "font-weight": 600, fill: "#1a1a2e" }, `${(r.avg_ratio * 100).toFixed(1)}%`));
+        const hit = svgEl("rect", { x: 0, y: m.t + i * rowH, width: W, height: rowH, fill: "transparent" });
+        hit.addEventListener("mousemove", (ev) => {
+            const rect = svg.getBoundingClientRect();
+            tip.innerHTML = `<b>${esc(r.n)}</b>
+                <div class="row">決標樣本<span class="v">${r.count} 件</span></div>
+                <div class="row">平均決標價／預算<span class="v">${(r.avg_ratio * 100).toFixed(1)}%</span></div>
+                <div class="row">平均投標家數<span class="v">${r.avg_bidders ?? "—"} 家</span></div>`;
+            tip.style.display = "block";
+            tip.style.left = Math.min(ev.clientX - rect.left + 12, rect.width - tip.offsetWidth) + "px";
+            tip.style.top = ((m.t + i * rowH) / H) * rect.height + rowH + "px";
+        });
+        hit.addEventListener("mouseleave", () => { tip.style.display = "none"; });
+        svg.appendChild(hit);
+    });
+    const total = rows.reduce((s, r) => s + r.count, 0);
+    $("award-sub").textContent = `共 ${total} 件決標樣本；越低代表越常以低於預算得標`;
+    box.appendChild(svg);
+}
+
+function drawTable(data) {
+    const names = industryNames.filter((n) => data.industries[n]);
+    const head = `<tr><th>公告日</th>${names.map((n) => `<th>${esc(n)}</th>`).join("")}</tr>`;
+    const body = data.dates.slice().reverse().map((d) => {
+        const i = data.dates.indexOf(d);
+        return `<tr><td>${fmtDate(d)}</td>${names.map((n) => `<td>${data.industries[n].counts[i] ?? "—"}</td>`).join("")}</tr>`;
+    }).join("");
+    const awardRows = industryNames.filter((n) => data.awards[n]).map((n) => {
+        const a = data.awards[n];
+        return `<tr><td>${esc(n)}</td><td>${a.count}</td><td>${a.avg_ratio !== null ? (a.avg_ratio * 100).toFixed(1) + "%" : "—"}</td><td>${a.avg_bidders ?? "—"}</td></tr>`;
+    }).join("");
+    $("trend-table").innerHTML =
+        `<table class="data-table">${head}${body}</table>` +
+        `<table class="data-table" style="margin-top:0.8rem"><tr><th>產業</th><th>決標樣本</th><th>平均決標價／預算</th><th>平均投標家數</th></tr>${awardRows}</table>`;
+}
+
+async function loadTrends() {
+    const data = await api("/api/trends");
+    drawTrend(data);
+    drawAwards(data);
+    drawTable(data);
+}
 
 /* ---------------- 更新狀態 ---------------- */
 
 let wasRunning = false;
 async function loadUpdate() {
-    const s = await fetch("/api/update").then((r) => r.json());
+    let s;
+    try { s = await api("/api/update"); } catch (e) { setTimeout(loadUpdate, 60000); return; }
     const pill = $("update-pill");
     pill.className = "pill" + (s.running ? " running" : s.last_error ? " error" : "");
     if (s.running) {
@@ -306,15 +665,149 @@ async function loadUpdate() {
         pill.textContent = `📅 公告日期 ${fmtDate(s.data_date) || "—"}・更新於 ${at}・每天 ${s.update_time} 自動更新`;
     }
     $("update-btn").disabled = s.running;
-    if (wasRunning && !s.running) loadDigest();
+    if (wasRunning && !s.running) { loadDigest(); loadTrends(); }
     wasRunning = s.running;
     setTimeout(loadUpdate, s.running ? 5000 : 60000);
 }
-$("update-btn").addEventListener("click", async () => {
-    if (!confirm("立即重新抓取最新標案與補助？約需 3～5 分鐘，期間仍可正常使用。")) return;
-    await fetch("/api/update", { method: "POST" });
+async function startUpdate() {
+    await api("/api/update", { method: "POST" });
     wasRunning = true;
     loadUpdate();
+}
+$("update-btn").addEventListener("click", () => {
+    if (confirm("立即重新抓取最新標案、決標與補助？約需 5～8 分鐘，期間仍可正常使用。")) startUpdate();
+});
+
+/* ---------------- 產業設定 ---------------- */
+
+let catalog = [], draft = [];
+function renderIndustryForm() {
+    $("ind-list").innerHTML = draft.map((d, i) => `
+        <div class="ind" data-i="${i}">
+            <div class="ind-top">
+                <input value="${esc(d.name)}" data-f="name" placeholder="產業名稱（例：環保工程）" maxlength="10">
+                <span class="hint">${i < 8 ? `<i style="display:inline-block;width:12px;height:3px;border-radius:2px;vertical-align:middle;background:var(--series-${i + 1})"></i> 圖表顏色` : ""}</span>
+                <button class="btn-small del" data-act="del">刪除</button>
+            </div>
+            <div class="field">標的分類（主要依據）</div>
+            <div class="codes">
+                ${d.categories.map((c, k) => `<span class="code">${esc(c)}${catalogName(c) ? "・" + esc(catalogName(c)) : ""}<button data-act="rm" data-k="${k}" aria-label="移除">✕</button></span>`).join("")}
+                <select data-act="add-code">
+                    <option value="">＋ 加入常用分類…</option>
+                    ${catalog.filter((c) => !d.categories.includes(c.code)).map((c) => `<option value="${esc(c.code)}">${esc(c.code)}　${esc(c.name)}</option>`).join("")}
+                    <option value="__custom">自行輸入代碼…</option>
+                </select>
+            </div>
+            <div class="field">標題關鍵字（非工程類標案的案名含任一字就收錄；用逗號分隔）</div>
+            <textarea data-f="keywords" placeholder="例：軟體, 資訊系統, 網站">${esc(d.keywords.join(", "))}</textarea>
+        </div>`).join("");
+}
+function catalogName(code) { const c = catalog.find((x) => x.code === code); return c ? c.name.split("（")[0] : ""; }
+function syncDraft() {
+    document.querySelectorAll("#ind-list .ind").forEach((el) => {
+        const d = draft[Number(el.dataset.i)];
+        d.name = el.querySelector('[data-f="name"]').value.trim();
+        d.keywords = el.querySelector('[data-f="keywords"]').value.split(/[,，、\n]/).map((s) => s.trim()).filter(Boolean);
+    });
+}
+$("settings-btn").addEventListener("click", async () => {
+    const data = await loadIndustries();
+    catalog = data.catalog;
+    draft = Object.entries(data.industries).map(([name, r]) => ({ name, categories: [...(r.categories || [])], keywords: [...(r.keywords || [])] }));
+    $("ind-err").textContent = "";
+    renderIndustryForm();
+    $("settings").showModal();
+});
+$("ind-list").addEventListener("click", (e) => {
+    const act = e.target.dataset.act;
+    if (!act || act === "add-code") return;
+    syncDraft();
+    const i = Number(e.target.closest(".ind").dataset.i);
+    if (act === "del") {
+        if (!confirm(`刪除「${draft[i].name || "未命名"}」？`)) return;
+        draft.splice(i, 1);
+    } else if (act === "rm") {
+        draft[i].categories.splice(Number(e.target.dataset.k), 1);
+    }
+    renderIndustryForm();
+});
+$("ind-list").addEventListener("change", (e) => {
+    if (e.target.dataset.act !== "add-code" || !e.target.value) return;
+    syncDraft();
+    const i = Number(e.target.closest(".ind").dataset.i);
+    let code = e.target.value;
+    if (code === "__custom") {
+        code = (prompt("輸入標的分類代碼（例：勞務類874、財物類452）") || "").trim();
+        if (!code) { renderIndustryForm(); return; }
+    }
+    if (!draft[i].categories.includes(code)) draft[i].categories.push(code);
+    renderIndustryForm();
+});
+$("ind-add").addEventListener("click", () => {
+    syncDraft();
+    draft.push({ name: "", categories: [], keywords: [] });
+    renderIndustryForm();
+    $("ind-list").lastElementChild.querySelector("input").focus();
+});
+const closeSettings = () => $("settings").close();
+$("settings-close").addEventListener("click", closeSettings);
+$("ind-cancel").addEventListener("click", closeSettings);
+$("ind-save").addEventListener("click", async () => {
+    syncDraft();
+    const names = draft.map((d) => d.name);
+    if (names.some((n) => !n)) { $("ind-err").textContent = "每個產業都要有名稱"; return; }
+    if (new Set(names).size !== names.length) { $("ind-err").textContent = "產業名稱不能重複"; return; }
+    const industries = Object.fromEntries(draft.map((d) => [d.name, { categories: d.categories, keywords: d.keywords }]));
+    try {
+        await api("/api/industries", jsonBody("PUT", { industries }));
+    } catch (err) {
+        $("ind-err").textContent = err.message;
+        return;
+    }
+    closeSettings();
+    await loadIndustries();
+    renderTenders();
+    loadTrends();
+    if (confirm("已儲存！新的產業設定要等下次更新資料才會生效。\n要現在立即更新嗎？（約 5～8 分鐘）")) startUpdate();
+});
+
+/* ---------------- 自動評估 ---------------- */
+
+async function loadEval() {
+    let s;
+    try { s = await api("/api/eval"); } catch (e) { return; }
+    $("eval-btn").disabled = s.running;
+    $("eval-btn").textContent = s.running ? "評估中…" : "執行評估";
+    const r = s.latest;
+    if (s.running) {
+        $("eval-meta").textContent = s.log.length ? s.log[s.log.length - 1].trim().slice(0, 40) : "準備中…";
+    } else if (r) {
+        $("eval-meta").textContent = `${r.started_at.slice(5, 16).replace("T", " ")}・${r.models.agent}`;
+    }
+    if (r) {
+        const m = r.summary, pct = (v) => (v === null || v === undefined ? "—" : Math.round(v * 100) + "%");
+        $("eval-summary").innerHTML = `
+            <div class="stats" style="margin-bottom:0.6rem">
+                <div class="stat"><div class="num">${pct(m.pass_rate)}</div><div class="label">整體通過率（${m.passed}/${m.cases}${m.skipped ? `，${m.skipped} 題未計分` : ""}）</div></div>
+                <div class="stat"><div class="num">${pct(m.tool_accuracy)}</div><div class="label">工具選擇正確率</div></div>
+                <div class="stat"><div class="num">${pct(m.guard_accuracy)}</div><div class="label">護欄正確率</div></div>
+                <div class="stat"><div class="num ${m.fabricated_links ? "warn" : ""}">${m.fabricated_links}</div><div class="label">被攔下的編造連結</div></div>
+            </div>
+            <table class="data-table"><tr><th>類別</th><th>通過</th></tr>${Object.entries(m.by_category).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v.passed}/${v.total}</td></tr>`).join("")}
+            <tr><td>平均回應時間</td><td>${m.avg_seconds ?? "—"} 秒</td></tr><tr><td>總 token</td><td>${(m.total_tokens || 0).toLocaleString()}</td></tr></table>`;
+        $("eval-details").innerHTML = r.results.map((x) => `
+            <div class="subsidy">
+                <div style="font-size:0.85rem;font-weight:600">${x.skipped ? "⚠️ 未計分" : x.passed ? "✅" : "❌"} ${x.id}. ${esc(x.title)} <span class="hint">（${esc(x.category)}，${x.seconds} 秒）</span></div>
+                <div class="meta">👤 ${esc(x.turns.map((t) => t.split("\n")[0]).join(" → "))}</div>
+                <div class="meta">${x.checks.map((c) => `${c.ok ? "✔" : "✘"} ${esc(c.detail)}`).join("<br>")}</div>
+            </div>`).join("");
+    }
+    if (s.running) setTimeout(loadEval, 5000);
+}
+$("eval-btn").addEventListener("click", async () => {
+    if (!confirm("執行 21 題自動評估？約需 5～10 分鐘，會使用 Gemini 額度。")) return;
+    await api("/api/eval", { method: "POST" });
+    loadEval();
 });
 
 /* ---------------- AI 對話 ---------------- */
@@ -351,10 +844,7 @@ async function send(text) {
     $("send").disabled = true;
     $("typing").classList.add("active");
     try {
-        const data = await fetch("/api/agent/chat", {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ user_id: userId, message: text }),
-        }).then((r) => r.json());
+        const data = await api("/api/agent/chat", jsonBody("POST", { user_id: userId, message: text }));
         addMessage("bot", data.reply || "（沒有回覆）", data.trace);
         renderProfile(data.profile);
     } catch (e) {
@@ -368,7 +858,7 @@ async function send(text) {
 
 async function loadUsage() {
     try {
-        const u = await fetch("/api/agent/usage").then((r) => r.json());
+        const u = await api("/api/agent/usage");
         const rows = u.days.map((d) => `<tr><td>${d.day}</td><td>${d.users || 0}</td><td>${d.chats || 0}</td><td>${(d.input_tokens || 0).toLocaleString()}</td><td>${(d.output_tokens || 0).toLocaleString()}</td></tr>`).join("");
         $("usage").innerHTML = `<tr><th>日期</th><th>使用者</th><th>對話</th><th>輸入 token</th><th>輸出 token</th></tr>` +
             (rows || `<tr><td colspan="5" style="text-align:center;color:#bbb">尚無資料</td></tr>`);
@@ -383,19 +873,26 @@ $("input").addEventListener("keydown", (e) => {
 });
 $("profile").addEventListener("click", async (e) => {
     if (e.target.id !== "reset") return;
-    if (!confirm("清除小幫手記住的公司條件和對話紀錄？")) return;
-    await fetch("/api/agent/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user_id: userId }) });
+    if (!confirm("清除小幫手記住的公司條件和對話紀錄？（追蹤的標案會保留）")) return;
+    await api("/api/agent/reset", jsonBody("POST", { user_id: userId }));
     $("messages").innerHTML = "";
     addMessage("bot", "記憶已清除，我們重新開始吧！");
     renderProfile(null);
 });
 $("fab").addEventListener("click", () => $("chat").scrollIntoView({ behavior: "smooth" }));
 
-addMessage("bot", "👋 嗨！我是標案補助小幫手。\n左邊是今天最新的標案和補助；告訴我你的產業、人數和地區，我幫你挑出最適合的案子。\n\n也可以在任一標案按「問小幫手」，我會讀公告幫你整理資格和押標金。");
-fetch(`/api/agent/profile?user_id=${encodeURIComponent(userId)}`).then((r) => r.json()).then(renderProfile).catch(() => renderProfile(null));
-loadDigest();
-loadUpdate();
-loadUsage();
+addMessage("bot", "👋 嗨！我是標案補助小幫手。\n左邊是今天最新的標案、得標行情和補助；告訴我你的產業、人數和地區，我幫你挑出最適合的案子。\n\n也可以問我「這類案子通常幾折得標、誰常得標」，或在標案按「問小幫手」，我會讀公告幫你整理資格和押標金。");
+api(`/api/agent/profile?user_id=${encodeURIComponent(userId)}`).then(renderProfile).catch(() => renderProfile(null));
+
+(async () => {
+    await loadIndustries();
+    await loadFavorites();
+    await loadDigest();
+    loadTrends();
+    loadUpdate();
+    loadUsage();
+    loadEval();
+})();
 </script>
 </body>
 </html>

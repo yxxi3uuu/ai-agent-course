@@ -27,7 +27,7 @@ SSL_CONTEXT = ssl.create_default_context()
 SSL_CONTEXT.verify_flags &= ~ssl.VERIFY_X509_STRICT
 
 
-LINK_REF_RE = re.compile(r"<<([TS]\d+)>>")
+LINK_REF_RE = re.compile(r"<<([TSA]\d+)>>")
 
 
 @dataclass
@@ -36,6 +36,7 @@ class ToolContext:
     seen_urls: set[str] = field(default_factory=set)
     link_refs: dict[str, str] = field(default_factory=dict)   # 代碼 → 網址
     calls: list[str] = field(default_factory=list)   # 呼叫紀錄（除錯／報告展示用）
+    guard_events: list[str] = field(default_factory=list)  # 輸出護欄的處置紀錄（評估用）
 
     def ref(self, url: str, kind: str) -> str:
         """網址 → 短代碼（同一網址重複出現時沿用同一代碼）"""
@@ -77,7 +78,7 @@ def make_tools(ctx: ToolContext) -> list:
         """查詢政府標案資料庫。
 
         Args:
-            industry: 產業分類，只能是「資訊軟體」「行銷設計」「教育訓練」「顧問研究」其中之一；不限則留空
+            industry: 產業分類，只能是系統提示中列出的產業名稱之一；不限則留空
             keyword: 標案名稱或內容的關鍵字，多個以空白分隔（全部都要命中），例如「AI 伺服器」
             location: 履約地點縣市，例如「臺中」「新北」；不限則留空
             min_budget: 最低預算（新臺幣元），0 表示不限
@@ -181,7 +182,7 @@ def make_tools(ctx: ToolContext) -> list:
         """記住使用者的公司條件，之後對話會自動帶入。使用者提到任何一項就呼叫，沒提到的欄位留空不覆蓋。
 
         Args:
-            industry: 產業，只能是「資訊軟體」「行銷設計」「教育訓練」「顧問研究」其中之一
+            industry: 產業，只能是系統提示中列出的產業名稱之一
             company_size: 公司人數
             location: 所在或想承接的縣市，例如「臺中」
             need: 需求，只能是「標案」「補助」「都要」其中之一
@@ -192,6 +193,57 @@ def make_tools(ctx: ToolContext) -> list:
                               location=normalize_place(location), need=need)
         return {"已儲存": {k: user[k] for k in ("industry", "company_size", "location", "need")}}
 
+    def analyze_awards(industry: str = "", keyword: str = "", location: str = "",
+                       min_budget: int = 0, max_budget: int = 0) -> dict:
+        """查詢過去的決標結果並統計得標行情：決標金額、決標價占預算比例（折數）、投標家數、得標最多的廠商。
+        用來回答「這類案子通常多少錢得標」「誰常得標」「競爭激烈嗎」「預算 X 萬大概幾折得標」。
+
+        Args:
+            industry: 產業分類，只能是系統提示中列出的產業名稱之一；不限則留空
+            keyword: 案名或標的分類關鍵字，多個以空白分隔（全部都要命中），例如「維運」「影片」
+            location: 履約地點縣市，例如「臺中」；不限則留空
+            min_budget: 只看預算不低於此金額（新臺幣元）的案子，0 表示不限
+            max_budget: 只看預算不高於此金額（新臺幣元）的案子，0 表示不限
+        """
+        ctx.calls.append(f"analyze_awards(industry={industry!r}, keyword={keyword!r}, location={location!r}, "
+                         f"min_budget={min_budget}, max_budget={max_budget})")
+        stats = db.award_stats(industry, keyword, normalize_place(location), min_budget, max_budget)
+        if not stats["樣本數"]:
+            return {"樣本數": 0, "說明": "目前資料中沒有符合條件的決標紀錄，可放寬條件（例如拿掉地區或關鍵字）"}
+        stats["決標金額中位數"] = format_budget(stats["決標金額中位數"])
+        stats["決標金額範圍"] = [format_budget(x) for x in stats["決標金額範圍"]]
+        for w in stats["得標最多的廠商"]:
+            w["得標總額"] = format_budget(w["得標總額"])
+        stats["近期案例"] = [{
+            "案名": r["title"], "機關": r["unit"], "決標日期": r["award_date"],
+            "預算": format_budget(r["budget"]), "決標金額": format_budget(r["award_amount"]),
+            "投標家數": r["bidders"], "得標廠商": r["winners"],
+            "公告連結": ctx.ref(r["url"], "A"),
+        } for r in stats["近期案例"]]
+        if stats["樣本數"] < 5:
+            stats["提醒"] = "樣本數少於 5 筆，統計僅供參考"
+        return stats
+
+    def list_favorites() -> dict:
+        """列出使用者在網頁上收藏（⭐）的標案與剩餘天數，依截止日由近到遠。
+        用來回答「我收藏的案子哪個最快截止」「我追蹤的案子有哪些」。"""
+        ctx.calls.append("list_favorites()")
+        now = datetime.now()
+        results = []
+        for r in db.favorites(ctx.user_id):
+            days = None
+            if r["deadline"]:
+                days = (datetime.strptime(r["deadline"], "%Y-%m-%d %H:%M") - now).total_seconds() / 86400
+            results.append({
+                "標案名稱": r["title"], "機關": r["unit"], "預算": format_budget(r["budget"]),
+                "截止投標": r["deadline"] or "未知（請看公告）",
+                "剩餘天數": None if days is None else ("已截止" if days < 0 else round(days, 1)),
+                "公告連結": ctx.ref(r["url"], "T"),
+            })
+        if not results:
+            return {"收藏數": 0, "說明": "使用者還沒有收藏任何標案；可提醒他在首頁標案旁按 ⭐ 收藏"}
+        return {"收藏數": len(results), "收藏": results}
+
     def get_today_digest() -> dict:
         """取得最新一期的「政府標案＋補助快報」全文。"""
         ctx.calls.append("get_today_digest()")
@@ -201,5 +253,5 @@ def make_tools(ctx: ToolContext) -> list:
         ctx.seen_urls.update(re.findall(r"https?://\S+", text))
         return {"快報": text}
 
-    return [search_tenders, search_subsidies, read_tender_page,
-            save_profile, get_today_digest]
+    return [search_tenders, search_subsidies, read_tender_page, analyze_awards,
+            list_favorites, save_profile, get_today_digest]

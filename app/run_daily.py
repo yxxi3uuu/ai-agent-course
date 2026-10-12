@@ -28,7 +28,8 @@ from app.pipeline import (
     _step5_clean, _step6_fix_headers,
 )
 from fetch_subsidy_tender import fetch_all, latest_tender_date
-from app.ingest import ingest, parse_final
+from app import db
+from app.ingest import ingest, ingest_awards, parse_final
 
 DAILY_CONFIG_PATH = Path(__file__).parent / "daily_config.json"
 DATA_DIR = PROJECT_ROOT / "data"
@@ -116,7 +117,7 @@ def run_daily(date: str | None = None, skip_fetch: bool = False,
     if not skip_fetch:
         log(f"🌐 抓取資料（{date}）...")
         counts = fetch_all(date, raw_dir, config, log)
-        log(f"  標案 {counts['tenders']} 筆、補助新聞 {counts['subsidies']} 則")
+        log(f"  標案 {counts['tenders']} 筆、決標 {counts['awards']} 筆、補助新聞 {counts['subsidies']} 則")
 
     if not raw_dir.exists() or not any(raw_dir.glob("*.txt")):
         return {"ok": False, "date": date, "message": "沒有可處理的資料"}
@@ -137,7 +138,12 @@ def run_daily(date: str | None = None, skip_fetch: bool = False,
     shutil.copytree(work_dir / "final", final_dir)
 
     n_tender, n_subsidy = ingest(final_dir, date)
-    log(f"🗄️ 寫入資料庫：標案 {n_tender}、補助 {n_subsidy}")
+    awards_json = raw_dir / f"awards_{date}.json"
+    n_award = ingest_awards(awards_json, date) if awards_json.exists() else 0
+    stats_json = raw_dir / f"stats_{date}.json"
+    if stats_json.exists():
+        db.save_daily_counts(date, json.loads(stats_json.read_text(encoding="utf-8")))
+    log(f"🗄️ 寫入資料庫：標案 {n_tender}、決標 {n_award}、補助 {n_subsidy}")
 
     items = parse_final(final_dir)
     (day_dir / "digest.md").write_text(build_digest(date, items), encoding="utf-8")
@@ -149,8 +155,8 @@ def run_daily(date: str | None = None, skip_fetch: bool = False,
     shutil.copy2(day_dir / "digest.md", latest / "digest.md")
 
     log(f"🎉 完成：{len(items)} 篇 → {final_dir}")
-    return {"ok": True, "date": date, "tenders": n_tender, "subsidies": n_subsidy,
-            "message": f"標案 {n_tender} 件、補助 {n_subsidy} 則"}
+    return {"ok": True, "date": date, "tenders": n_tender, "awards": n_award, "subsidies": n_subsidy,
+            "message": f"標案 {n_tender} 件、決標 {n_award} 筆、補助 {n_subsidy} 則"}
 
 
 def main() -> int:

@@ -1,7 +1,7 @@
 # 🤖 標案補助小幫手
 
-每天自動整理**政府電子採購網的新標案**與**補助／獎勵消息**，打開網頁就能看到當天最新資訊；
-右側的 **AI Agent**（Gemini）會記住你的公司條件，從資料庫中精準篩選、推薦適合的案子，並能讀取公告回答資格與押標金。
+每天自動整理**政府電子採購網的新標案**、**決標結果（得標行情）**與**補助／獎勵消息**，打開網頁就能看到當天最新資訊；
+右側的 **AI Agent**（Gemini）會記住你的公司條件，從資料庫中精準篩選、推薦適合的案子，分析「這類案子通常幾折得標、誰常得標」，並能讀取公告回答資格與押標金。
 
 > 中央大學 115-1「AI Agent」期末專題。設計說明與課綱對照見 [docs/agent_設計.md](docs/agent_設計.md)。
 
@@ -30,7 +30,14 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 瀏覽器打開 **http://localhost:8000**
 
-第一次啟動時資料庫是空的，服務會自動在背景抓取資料（約 3～5 分鐘），完成後頁面會自動顯示。
+第一次啟動時資料庫是空的，服務會自動在背景抓取資料（約 5～8 分鐘），完成後頁面會自動顯示。
+
+想讓「得標行情」和「趨勢圖」一開始就有足夠資料，可以先補抓過去的資料（只需做一次）：
+
+```bash
+python -m app.backfill_awards --days 30 --counts-only
+python -m app.backfill_awards --days 14
+```
 
 ---
 
@@ -39,7 +46,12 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 | 區塊 | 說明 |
 |------|------|
 | 📅 每日最新資訊 | 最新一期未截止標案（依預算排序，可依產業篩選、搜尋）、3 天內截止提醒、補助消息 |
-| 💬 AI 小幫手 | 記住產業／人數／地區、依條件查標案與補助、讀公告回答資格與押標金 |
+| ⭐ 我的追蹤 | 收藏標案、截止倒數（3 天內紅字）、一鍵加入行事曆（.ics，截止前一天提醒） |
+| ⬇️ 匯出 | 目前篩選的標案匯出 Excel |
+| 📈 趨勢與得標行情 | 各產業每日新標案數走勢、各產業平均決標價占預算比例（滑鼠移上去看細節，也可切表格） |
+| 💬 AI 小幫手 | 記住產業／人數／地區、依條件查標案與補助、分析得標行情、讀公告回答資格與押標金、查詢收藏 |
+| ⚙️ 產業設定 | 在網頁上新增／修改追蹤的產業（標的分類＋關鍵字），下次更新生效 |
+| 🧪 自動評估 | 21 題測試題，標準答案即時由資料庫計算，統計通過率、工具選擇、護欄、編造連結 |
 | 🔄 自動更新 | 服務開著時每天 `DAILY_UPDATE_TIME`（預設 07:30）自動更新；也可按「立即更新」 |
 | 📊 系統用量 | 每日使用者數、對話數、token 用量 |
 
@@ -48,15 +60,18 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 g0v 政府採購網 API ─┐
 Google 新聞 RSS ────┴→ fetch_subsidy_tender.py
-                      → pipeline：jieba 關鍵字 → 過濾 → 去重 → 清理 → 整理
+                      ├ 標案、補助 → pipeline：jieba 關鍵字 → 過濾 → 去重 → 清理 → 整理
+                      ├ 決標結果（結構化 JSON）
+                      └ 各產業每日標案數
                       → ingest.py 寫入 SQLite（data/agent.db）
                       → 首頁顯示／Agent 查詢
 ```
 
-也可以手動執行一次更新：
+也可以手動執行：
 
 ```bash
-python -m app.run_daily
+python -m app.run_daily      # 更新一次資料
+python -m app.evaluate       # 跑一次自動評估，報告存在 data/eval/
 ```
 
 ## 設定
@@ -64,7 +79,7 @@ python -m app.run_daily
 | 檔案 | 內容 |
 |------|------|
 | `.env` | Gemini API key、模型、每日更新時間 |
-| `app/daily_config.json` | 追蹤的產業與標的分類、補助搜尋關鍵字、過濾詞、停用詞 |
+| `app/daily_config.json` | 追蹤的產業與標的分類（也可在網頁「⚙️ 產業設定」修改）、補助搜尋關鍵字、過濾詞、停用詞 |
 
 ## 資料夾結構
 
@@ -77,11 +92,15 @@ python -m app.run_daily
 │   ├── ingest.py            # 清理結果寫入 SQLite
 │   ├── db.py                # SQLite（標案、補助、使用者記憶、用量）
 │   ├── agent.py             # Gemini Agent＋輸入／輸出護欄
-│   ├── agent_tools.py       # Agent 工具（查標案、查補助、讀公告、記住條件）
+│   ├── agent_tools.py       # Agent 工具（查標案、查補助、讀公告、得標行情、收藏、記住條件）
+│   ├── backfill_awards.py   # 補抓過去的決標結果與每日標案數
+│   ├── evaluate.py          # 自動評估（21 題）
+│   ├── export.py            # 匯出 Excel／行事曆
+│   ├── settings.py          # 產業設定讀寫與檢查
 │   ├── daily_config.json    # 每日資料設定
 │   └── static/index.html    # 首頁
 ├── scripts/
-│   ├── fetch_subsidy_tender.py  # 抓政府標案＋補助新聞
+│   ├── fetch_subsidy_tender.py  # 抓政府標案、決標結果、補助新聞
 │   ├── add_keywords_fast.py     # jieba 關鍵字
 │   ├── filter_articles.py       # 過濾
 │   ├── dedup_articles.py        # 去重複

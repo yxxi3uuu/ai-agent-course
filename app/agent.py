@@ -11,22 +11,31 @@ import json
 import os
 import re
 import sys
-from datetime import datetime
+import time
+from datetime import date, datetime
 
 from dotenv import load_dotenv
 from google import genai
 from google.genai import errors, types
 
-from app import db
+from app import db, settings
 from app.agent_tools import LINK_REF_RE, ToolContext, make_tools
 
 load_dotenv(db.PROJECT_ROOT / ".env")
 
-# 免費額度是「每個模型」分開計算，所以 Agent 與護欄用不同模型分攤；
-# 主模型忙碌（503）或額度用完（429）時改用備援模型
+
+
+def _model_list(env: str, default: str) -> list[str]:
+    return [m.strip() for m in os.environ.get(env, default).split(",") if m.strip()]
+
+
+# 免費額度是「每個模型」分開計算（每分鐘與每天各有上限），所以 Agent 與護欄用不同模型分攤；
+# 主模型忙碌（503）或額度用完（429）時，依序改用備援模型
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
-FALLBACK_MODEL = os.environ.get("GEMINI_FALLBACK_MODEL", "gemini-2.5-flash")
+FALLBACK_MODELS = _model_list("GEMINI_FALLBACK_MODEL", "gemini-3.6-flash,gemini-3.7-flash,gemini-2.5-flash,gemini-2.5-flash-lite")
 GUARD_MODEL = os.environ.get("GEMINI_GUARD_MODEL", "gemini-3.5-flash-lite")
+GUARD_FALLBACK_MODELS = _model_list("GEMINI_GUARD_FALLBACK_MODEL", "gemini-2.5-flash-lite,gemini-3.1-flash-lite")
+MAX_RATE_LIMIT_WAIT = 40   # 秒；每分鐘額度用完時，最多等這麼久再試一次
 OUTPUT_GUARD_LLM = os.environ.get("OUTPUT_GUARD_LLM", "1") == "1"
 HISTORY_TURNS = 10
 DISCLAIMER = "※ 實際資格與期限以公告及投標須知為準"
@@ -42,7 +51,8 @@ SYSTEM_PROMPT = """<role>
 
 <rules>
 1. 使用者提到產業、人數、地區或需求時，先呼叫 save_profile 記住。
-   產業只能歸類為：資訊軟體、行銷設計、教育訓練、顧問研究。無法歸類時，請使用者從這四類選一個。
+   產業只能歸類為：{industries}。無法歸類時，請使用者從這幾類選一個。
+   工具的 industry 參數也只能填這幾個名稱。
 2. 使用者想找案子，但 user_profile 和這次訊息都看不出產業時，先追問產業（可順便問地區），不要直接查。
 3. 案子與數字只能來自工具回傳的結果。查不到就說「目前資料中沒有找到」，不可自行編造案名、金額、截止日或連結。
 4. 推薦標案時，每一案列出：案名、機關、預算、截止投標、公告連結。列補助消息時附上新聞連結。
@@ -51,7 +61,10 @@ SYSTEM_PROMPT = """<role>
 6. 使用者貼採購網連結，或問押標金、資格等細節時，用 read_tender_page 讀取後回答。
 7. 不提供圍標、綁標、借牌、偽造文件等任何規避採購法的建議。
 8. 回覆顯示在網頁對話框（純文字）：用繁體中文、口語而專業、條列；不要用 Markdown 符號（不要 **、#、表格）。
-9. 與標案、補助無關的問題，簡短說明你能做什麼。
+9. 問到得標價格、行情、折數、競爭對手、誰常得標、競爭激不激烈時，用 analyze_awards 查過去的決標結果。
+   說明時要講出樣本數與資料期間；「平均決標價／預算」0.92 代表平均約以預算的 92% 得標。樣本少於 5 筆要提醒僅供參考。
+10. 問到「我收藏的／追蹤的案子」時，用 list_favorites；剩餘天數 3 天以內要特別提醒。
+11. 與標案、補助無關的問題，簡短說明你能做什麼。
 </rules>"""
 
 INPUT_GUARD_PROMPT = """<task>
@@ -104,24 +117,46 @@ def _log_usage(user_id: str, kind: str, model: str, resp) -> None:
         db.log_usage(user_id, kind, model, u.prompt_token_count or 0, u.candidates_token_count or 0)
 
 
+# 今天每日額度已用完的模型，當天直接跳過，不再浪費一次請求
+_exhausted_today: dict[str, date] = {}
+
+
 def _generate(user_id: str, kind: str, models: list[str], contents, config):
-    """依序嘗試模型；遇到 429／503 換下一個"""
-    last_error = None
-    for model in dict.fromkeys(models):   # 去掉重複、保留順序
-        try:
-            resp = client().models.generate_content(model=model, contents=contents, config=config)
-            _log_usage(user_id, kind, model, resp)
-            return resp
-        except errors.APIError as e:
-            if e.code not in (429, 503):
-                raise
-            print(f"[{kind}] {model} {e.code}，改用下一個模型", file=sys.stderr)
-            last_error = e
+    """依序嘗試模型；429／503 換下一個。全部失敗且只是每分鐘額度或暫時忙碌時，等一下再試一輪"""
+    last_error, wait = None, 0.0
+    for attempt in range(2):
+        if attempt:
+            print(f"[{kind}] 所有模型暫時無法使用，{wait:.0f} 秒後再試", file=sys.stderr)
+            time.sleep(wait)
+        wait = 0.0
+        for model in dict.fromkeys(models):   # 去掉重複、保留順序
+            if _exhausted_today.get(model) == date.today():
+                continue
+            try:
+                resp = client().models.generate_content(model=model, contents=contents, config=config)
+                _log_usage(user_id, kind, model, resp)
+                return resp
+            except errors.APIError as e:
+                if e.code not in (429, 503):
+                    raise
+                last_error = e
+                msg = str(e)
+                if "PerDay" in msg:
+                    _exhausted_today[model] = date.today()
+                    print(f"[{kind}] {model} 今日額度已用完，改用下一個模型", file=sys.stderr)
+                    continue
+                m = re.search(r"retry in ([\d.]+)s", msg)
+                wait = max(wait, min(float(m.group(1)) if m else 10.0, MAX_RATE_LIMIT_WAIT))
+                print(f"[{kind}] {model} {e.code}，改用下一個模型", file=sys.stderr)
+        if not wait:   # 全部都是每日額度用完：等也沒用
+            break
+    if last_error is None:
+        raise RuntimeError("今天所有模型的免費額度都已用完，請明天再試或更換 API key")
     raise last_error
 
 
 def _judge(user_id: str, kind: str, system: str, text: str) -> dict:
-    resp = _generate(user_id, kind, [GUARD_MODEL, FALLBACK_MODEL], text, types.GenerateContentConfig(
+    resp = _generate(user_id, kind, [GUARD_MODEL, *GUARD_FALLBACK_MODELS], text, types.GenerateContentConfig(
         system_instruction=system, temperature=0,
         response_mime_type="application/json",
     ))
@@ -151,11 +186,13 @@ def output_guard(user_id: str, reply: str, ctx: ToolContext) -> str:
         for code in LINK_REF_RE.findall(line):
             if code not in ctx.link_refs:
                 print(f"[output_guard] 刪除無效的連結代碼：{code}", file=sys.stderr)
+                ctx.guard_events.append(f"輸出護欄刪除無效連結代碼 {code}")
                 return None
             line = line.replace(f"<<{code}>>", ctx.link_refs[code])
         for url in re.findall(r"https?://[^\s）)」，。、\]>\"']+", line):
             if url not in ctx.seen_urls:
                 print(f"[output_guard] 刪除未經查證的連結：{url}", file=sys.stderr)
+                ctx.guard_events.append(f"輸出護欄刪除未經查證的連結 {url}")
                 return None
         return line
     lines = [check_line(l) for l in reply.splitlines()]
@@ -171,6 +208,7 @@ def output_guard(user_id: str, reply: str, ctx: ToolContext) -> str:
             verdict = _judge(user_id, "output_guard", OUTPUT_GUARD_PROMPT, reply)
             if not verdict.get("safe", True):
                 print(f"[output_guard] 擋下：{verdict.get('reason')}", file=sys.stderr)
+                ctx.guard_events.append(f"輸出護欄擋下：{verdict.get('reason')}")
                 return BLOCKED_REPLY
         except Exception as e:
             print(f"[output_guard] {e}", file=sys.stderr)
@@ -188,6 +226,7 @@ def _system_prompt(user: dict) -> str:
     unknown = "未提供"
     return SYSTEM_PROMPT.format(
         today=datetime.now().strftime("%Y-%m-%d"),
+        industries="、".join(settings.industry_names()),
         industry=user.get("industry") or unknown,
         company_size=f"{user['company_size']} 人" if user.get("company_size") else unknown,
         location=user.get("location") or unknown,
@@ -221,7 +260,7 @@ def chat(user_id: str, text: str, verbose: bool = False, trace: list[str] | None
     contents = history + [types.Content(role="user", parts=[types.Part.from_text(text=text)])]
 
     try:
-        resp = _generate(user_id, "agent", [MODEL, FALLBACK_MODEL], contents, types.GenerateContentConfig(
+        resp = _generate(user_id, "agent", [MODEL, *FALLBACK_MODELS], contents, types.GenerateContentConfig(
             system_instruction=_system_prompt(user),
             tools=make_tools(ctx),
             temperature=0.3,
@@ -230,6 +269,8 @@ def chat(user_id: str, text: str, verbose: bool = False, trace: list[str] | None
         reply = (resp.text or "").strip() or "抱歉，我沒有找到合適的回答，可以換個方式問問看嗎？"
     except Exception as e:
         print(f"[agent] {e}", file=sys.stderr)
+        if trace is not None:
+            trace.append(f"❌ 模型呼叫失敗：{str(e)[:80]}")
         return ERROR_REPLY
 
     if verbose:
@@ -238,6 +279,8 @@ def chat(user_id: str, text: str, verbose: bool = False, trace: list[str] | None
     if trace is not None:
         trace.extend(f"🔧 {c}" for c in ctx.calls)
     reply = output_guard(user_id, reply, ctx)
+    if trace is not None:
+        trace.extend(f"🛡️ {e}" for e in ctx.guard_events)
     db.add_message(user_id, "user", text)
     db.add_message(user_id, "model", reply)
     return reply

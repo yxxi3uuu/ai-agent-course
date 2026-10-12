@@ -2,7 +2,6 @@
 
 > 中央大學 115-1「AI Agent」期末專題
 > 姓名：吳怡臻　學號：112707527
-> 程式碼：https://github.com/yxxi3uuu/doc-extractor
 
 ---
 

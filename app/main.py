@@ -19,7 +19,7 @@ from urllib.parse import quote
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from app import auth, db, export, scheduler, settings
+from app import auth, db, export, scheduler, seed, settings
 from app.agent_tools import format_budget
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -27,6 +27,7 @@ STATIC_DIR = Path(__file__).parent / "static"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    seed.ensure_database()   # 第一次啟動：用 seed 的公開資料建立資料庫
     scheduler.start()
     yield
 

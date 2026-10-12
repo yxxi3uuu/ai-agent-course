@@ -30,13 +30,14 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 瀏覽器打開 **http://localhost:8000**，第一次會看到登入頁，先按「註冊」建立帳號。
 
-第一次啟動時資料庫是空的，服務會自動在背景抓取資料（約 5～8 分鐘），完成後頁面會自動顯示。
+第一次啟動時會用專案附的初始資料（`seed/seed.db`：標案、197 筆決標結果、補助、每日標案數）建立資料庫，
+馬上就能看到得標行情與趨勢圖；之後服務會在背景抓取最新資料。初始資料只含公開資料，不含任何帳號或個人資料。
 
-想讓「得標行情」和「趨勢圖」一開始就有足夠資料，可以先補抓過去的資料（只需做一次）：
+想補抓更多過去的決標資料（選用）：
 
 ```bash
 python -m app.backfill_awards --days 30 --counts-only
-python -m app.backfill_awards --days 14
+python -m app.backfill_awards --days 30
 ```
 
 ---
@@ -73,7 +74,10 @@ Google 新聞 RSS ────┴→ fetch_subsidy_tender.py
 ```bash
 python -m app.run_daily      # 更新一次資料
 python -m app.evaluate       # 跑一次自動評估，報告存在 data/eval/
+python -m app.seed export    # 用目前資料庫的公開資料更新 seed/seed.db
 ```
+
+過去的評估報告存放在 [docs/eval/](docs/eval/)。
 
 ## 設定
 
@@ -98,6 +102,7 @@ python -m app.evaluate       # 跑一次自動評估，報告存在 data/eval/
 │   ├── backfill_awards.py   # 補抓過去的決標結果與每日標案數
 │   ├── evaluate.py          # 自動評估（21 題）
 │   ├── export.py            # 匯出 Excel／行事曆
+│   ├── seed.py              # 初始資料匯出／首次啟動建立資料庫
 │   ├── settings.py          # 產業設定讀寫與檢查
 │   ├── daily_config.json    # 每日資料設定
 │   └── static/             # 首頁 index.html、登入 login.html、個人資料 profile.html
@@ -107,7 +112,10 @@ python -m app.evaluate       # 跑一次自動評估，報告存在 data/eval/
 │   ├── filter_articles.py       # 過濾
 │   ├── dedup_articles.py        # 去重複
 │   └── clean.py                 # 正文清理
-├── docs/agent_設計.md
+├── seed/seed.db             # 初始資料（只含公開資料）
+├── docs/
+│   ├── agent_設計.md
+│   └── eval/                # 自動評估報告
 ├── data/                    # 每日資料與資料庫（自動產生，不進 git）
 ├── .env.example
 └── requirements.txt

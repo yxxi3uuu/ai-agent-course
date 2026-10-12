@@ -1,0 +1,320 @@
+{
+ "started_at": "2026-10-12T19:37:08",
+ "finished_at": "2026-10-12T19:41:56",
+ "models": {
+  "agent": "gemini-3.5-flash",
+  "fallback": [
+   "gemini-3.6-flash",
+   "gemini-3.7-flash",
+   "gemini-2.5-flash",
+   "gemini-2.5-flash-lite"
+  ],
+  "guard": "gemini-3.5-flash-lite"
+ },
+ "data_date": "20261008",
+ "award_samples": 80,
+ "summary": {
+  "cases": 6,
+  "skipped": 3,
+  "passed": 6,
+  "pass_rate": 1.0,
+  "by_category": {
+   "標案檢索": {
+    "passed": 2,
+    "total": 2
+   },
+   "得標行情": {
+    "passed": 1,
+    "total": 1
+   },
+   "記憶與追問": {
+    "passed": 1,
+    "total": 1
+   },
+   "補助查詢": {
+    "passed": 1,
+    "total": 1
+   },
+   "護欄放行": {
+    "passed": 1,
+    "total": 1
+   }
+  },
+  "tool_accuracy": 1.0,
+  "guard_accuracy": 1.0,
+  "fabricated_links": 0,
+  "avg_seconds": 24.0,
+  "total_tokens": 30865
+ },
+ "results": [
+  {
+   "id": 4,
+   "category": "標案檢索",
+   "title": "高預算門檻",
+   "turns": [
+    "顧問研究類有沒有預算 1000 萬以上、還沒截止的案子？"
+   ],
+   "reply": "已為您找到顧問研究類、預算 1000 萬元以上且尚未截止的標案。為您精選其中 5 件案件，依規模與類型整理如下：\n\n1.\n案名：116年內政部國土管理署中區都市基礎工程分署辦理社會住宅暨代辦建築工程業務勞務承攬案\n機關：內政部國土管理署中區都市基礎工程分署\n預算：4,044 萬元\n截止投標：2026-11-16 17:00\n公告連結：https://web.pcc.gov.tw/tps/QueryTender/query/searchTenderDetail?pkPmsMain=NzEzMDk0NzA\n適合原因：此案為中區大型工程代辦與管理案，備標期長達一個月以上，適合具備工程管理與技術專案代辦能量的顧問機構。\n\n2.\n案名：116年高雄市移動污染源(柴油車)污染減量暨動力站維護管理計畫\n機關：高雄市政府環境保護局\n預算：3,933 萬元\n截止投標：2026-11-09 17:30\n公告連結：https://web.pcc.gov.tw/tps/QueryTender/query/searchTenderDetail?pkPmsMain=NzEzNDYzMTU\n適合原因：預算規模近 4000 萬，適合具備環境工程、檢測管理與科技顧問專長的團隊長期承接。\n\n3.\n案名：苗栗縣交通安全改善與前瞻應用計畫\n機關：苗栗縣政府\n預算：2,600 萬元\n截止投標：2026-10-27 17:00\n公告連結：https://web.pcc.gov.tw/tps/QueryTender/query/searchTenderDetail?pkPmsMain=NzEzMjk5NzQ\n適合原因：聚焦於交通安全改善與智慧前瞻規劃，適合擁有交通工程技師或顧問諮詢經驗的團隊。\n\n4.\n案名：北部各核能發電廠附近海域之生態調查\n機關：台灣電力股份有限公司\n預算：2,384 萬元\n截止投標：2026-11-13 10:00\n公告連結：https://web.pcc.gov.tw/tps/QueryTender/query/searchTenderDetail?pkPmsMain=NzEzMzMxODA\n適合原因：台電大型海域調查案，備標時間充裕，適合具備海洋生態調查、環境監測與學術研究背景的顧問單位。\n\n5.\n案名：臺灣海域重要生態系調查(12浬內)\n機關：海洋委員會海洋保育署\n預算：1,950 萬元\n截止投標：2026-10-20 17:00\n公告連結：https://web.pcc.gov.tw/tps/QueryTender/query/searchTenderDetail?pkPmsMain=NzEzMzM0MjA\n適合原因：為中央級海洋生態調查專案，適合海洋資源研究、生態保育調查專長的公司或研究機構投標。\n\n若您對特定標案的投標資格、押標金或過去決標行情有興趣，請告訴我案名或編號，我能為您進一步查詢詳細內容！\n\n※ 實際資格與期限以公告及投標須知為準",
+   "trace": [
+    "🔧 save_profile(industry='顧問研究', company_size=0, location='', need='標案')",
+    "🔧 search_tenders(industry='顧問研究', keyword='', location='', min_budget=10000000, max_budget=0)"
+   ],
+   "checks": [
+    {
+     "ok": true,
+     "detail": "呼叫了 search_tenders"
+    },
+    {
+     "ok": true,
+     "detail": "標準答案 7 案，回覆有提到其中之一（例：內政部國土管理署中區）"
+    },
+    {
+     "ok": true,
+     "detail": "沒有編造連結"
+    }
+   ],
+   "passed": true,
+   "skipped": false,
+   "seconds": 24.1,
+   "tokens": 5432,
+   "fabricated_links": 0
+  },
+  {
+   "id": 5,
+   "category": "標案檢索",
+   "title": "讀公告回答細節",
+   "turns": [
+    "幫我看這個標案的廠商資格和押標金：新北市政府115年用戶端資訊服務委外\nhttps://web.pcc.gov.tw/tps/QueryTender/query/searchTenderDetail?pkPmsMain=NzEzNDU4NDQ"
+   ],
+   "reply": "這案子的廠商資格與押標金規定如下：\n\n一、押標金\n本案不須繳納押標金（免收押標金）。\n註：得標後仍須依規定繳納履約保證金。\n\n二、廠商資格\n本案未訂特定資格限制，基本資格要求如下：\n\n1. 廠商登記或設立證明（符合下列其中一項）：\n・技師事務所，且執業執照科別包括資訊科者\n・公司或行號\n・已立案之法人、機構或團體（依證明文件可提供資訊軟體服務、規劃、設計開發、維護、整合等相關業務）\n\n2. 廠商信用證明：\n・票據交換機構或受理查詢金融機構出具之非拒絕往來戶及最近三年無退票紀錄證明。\n\n3. 廠商納稅證明：\n・公司或行號之最近一期或前一期營業稅繳稅證明。\n\n4. 陸資限制規定：\n・不得為經濟部投資審議司公告之陸資資訊服務業者。\n・不得為經濟部投資審議司公告之在臺陸資廠商。\n\n5. 履約能力相關證明：\n・須依招標文件（投標須知-資格文件準備須知/審查表）檢附具有製造、供應、承做能力或售後維護等基本能力證明。\n\n本案截止投標時間為 115 年 11 月 3 日上午 09:20，採全電子投標，建議儘早至採購網下載完整招標文件確認細部表單。如果需要了解服務需求重點或準備建議，都可以隨時告訴我！",
+   "trace": [
+    "🔧 read_tender_page('https://web.pcc.gov.tw/tps/QueryTender/query/searchTenderDetail?pkPmsMain=NzEzNDU4NDQ')"
+   ],
+   "checks": [
+    {
+     "ok": true,
+     "detail": "呼叫了 read_tender_page"
+    },
+    {
+     "ok": true,
+     "detail": "回覆有提到「押標金」"
+    },
+    {
+     "ok": true,
+     "detail": "沒有編造連結"
+    }
+   ],
+   "passed": true,
+   "skipped": false,
+   "seconds": 47.3,
+   "tokens": 7597,
+   "fabricated_links": 0
+  },
+  {
+   "id": 6,
+   "category": "得標行情",
+   "title": "平均決標折數",
+   "turns": [
+    "資訊軟體類的案子，通常是以預算的幾成得標？"
+   ],
+   "reply": "根據過去決標資料的統計，資訊軟體類的標案平均約以預算的 95%（95.1%）得標，也就是大約九五折左右。\n\n這項統計的詳細背景與市場特性如下：\n\n1. 統計資料背景\n樣本數共有 46 筆，資料期間為 2026-03-26 至 2026-10-07。\n\n2. 價格與折數行情\n資訊軟體案的平均決標價占預算比例為 95.1%，折數通常不會壓得太低，大多以九成至九五折左右成交。\n\n3. 競爭狀況\n平均投標家數約 1.2 家，其中只有 1 家投標的比例高達 93%。這反映出資訊軟體類標案通常有特定的技術規格或延續性維運需求，許多案件競爭家數不多，甚至可能走限制性招標。\n\n4. 案件金額規模\n決標金額中位數約為 456 萬元，範圍從小型專案 22 萬元到大型專案 3.5 億元都有。\n\n5. 中小企業承接機會\n在這些得標案件中，中小企業得標比例約占 67%，顯示中小型團隊在資訊軟體領域依然有相當不錯的承接空間。\n\n6. 常見得標廠商\n得標件數較多的單位包含中華電信企業客戶分公司、國家中山科學研究院、工業技術研究院、大武科技、神通資訊科技等。\n\n如果您目前有看到特定的軟體標案，也可以提供案名或預算，我能進一步幫您評估競爭狀況或適合的報價方向。",
+   "trace": [
+    "🔧 save_profile(industry='資訊軟體', company_size=0, location='', need='')",
+    "🔧 analyze_awards(industry='資訊軟體', keyword='', location='', min_budget=0, max_budget=0)"
+   ],
+   "checks": [
+    {
+     "ok": true,
+     "detail": "呼叫了 analyze_awards"
+    },
+    {
+     "ok": true,
+     "detail": "標準答案約 95.1%，回覆有接近的數字"
+    },
+    {
+     "ok": true,
+     "detail": "沒有編造連結"
+    }
+   ],
+   "passed": true,
+   "skipped": false,
+   "seconds": 13.1,
+   "tokens": 4066,
+   "fabricated_links": 0
+  },
+  {
+   "id": 10,
+   "category": "記憶與追問",
+   "title": "跨回合記住公司條件",
+   "turns": [
+    "我們是高雄的行銷公司，8 個人",
+    "那有什麼適合我的標案？"
+   ],
+   "reply": "為您查詢到目前高雄地區正在招標中的行銷設計類標案，共找到 4 筆。\n\n考量貴公司團隊規模為 8 人，建議優先評估預算規模適中、資格門檻較親民的案子，執行負擔較小，也更容易累積公部門實績。以下依適合程度為您排序推薦：\n\n1. 115年度結合統一發票推行暨「來稅局找碴-觀察力培養計畫」租稅宣導活動委外服務案\n機關：財政部高雄國稅局\n預算：44 萬元\n截止投標：2026-10-14 17:30\n公告連結：https://web.pcc.gov.tw/tps/QueryTender/query/searchTenderDetail?pkPmsMain=NzEzNDUzOTM\n推薦原因：預算規模小、為公開取得報價單或企劃書案件，非常適合 8 人團隊發揮主題企劃與宣導創意，但截止時間較近需留意備標時間。\n\n2. 2026茄萣烏魚海鮮美食節\n機關：高雄市茄萣區公所\n預算：210 萬元\n截止投標：2026-10-21 17:00\n公告連結：https://web.pcc.gov.tw/tps/QueryTender/query/searchTenderDetail?pkPmsMain=NzEzNDYyOTk\n推薦原因：地方特色節慶活動，適合擅長地方創生、實體活動策劃與社群宣傳的行銷團隊發揮。\n\n3. 原日本海軍鳳山無線電信所大碉堡貨櫃迴廊製作執行勞務採購案\n機關：高雄市政府文化局\n預算：382 萬元\n截止投標：2026-10-19 17:00\n公告連結：https://web.pcc.gov.tw/tps/QueryTender/query/searchTenderDetail?pkPmsMain=NzEzNDYzODU\n推薦原因：結合文化資產與展場空間裝置製作，適合具備策展空間設計與視覺整合能力的團隊。\n\n4. 2026高雄愛河灣水舞燈光展演委託專業服務採購案\n機關：高雄市政府觀光局\n預算：380 萬元\n截止投標：2026-10-19 17:00\n公告連結：https://web.pcc.gov.tw/tps/QueryTender/query/searchTenderDetail?pkPmsMain=NzEzNDY3Njc\n推薦原因：大型觀光展演專案，若團隊有硬體燈光廠商合作資源或大型節慶整合經驗可考慮挑戰。\n\n如果您對其中哪一案的押標金、投標資格或工作內容有興趣，可以告訴我，我能為您調閱完整公告細節；或者想了解同類型標案過往的得標行情也可以查詢！\n\n※ 實際資格與期限以公告及投標須知為準",
+   "trace": [
+    "🔧 save_profile(industry='行銷設計', company_size=8, location='高雄', need='')",
+    "🔧 save_profile(industry='', company_size=0, location='', need='標案')",
+    "🔧 search_tenders(industry='行銷設計', keyword='', location='高雄', min_budget=0, max_budget=0)"
+   ],
+   "checks": [
+    {
+     "ok": true,
+     "detail": "呼叫了 save_profile"
+    },
+    {
+     "ok": true,
+     "detail": "呼叫了 search_tenders"
+    },
+    {
+     "ok": true,
+     "detail": "沒有編造連結"
+    }
+   ],
+   "passed": true,
+   "skipped": false,
+   "seconds": 24.8,
+   "tokens": 7330,
+   "fabricated_links": 0
+  },
+  {
+   "id": 11,
+   "category": "記憶與追問",
+   "title": "沿用條件只改預算",
+   "turns": [
+    "我是台中的軟體公司",
+    "預算 300 萬以上的呢？"
+   ],
+   "reply": "系統忙碌中，請稍後再試一次 🙏",
+   "trace": [
+    "🔧 save_profile(industry='資訊軟體', company_size=0, location='臺中', need='')",
+    "❌ 模型呼叫失敗：404 NOT_FOUND. {'error': {'code': 404, 'message': 'This model models/gemini-2.5-"
+   ],
+   "checks": [
+    {
+     "ok": false,
+     "detail": "沒有呼叫 search_tenders"
+    },
+    {
+     "ok": true,
+     "detail": "沒有編造連結"
+    }
+   ],
+   "passed": false,
+   "skipped": true,
+   "seconds": 17.2,
+   "tokens": 2820,
+   "fabricated_links": 0
+  },
+  {
+   "id": 12,
+   "category": "記憶與追問",
+   "title": "收藏的案子最快截止",
+   "turns": [
+    "我收藏的案子哪個最快截止？"
+   ],
+   "reply": "系統忙碌中，請稍後再試一次 🙏",
+   "trace": [
+    "❌ 模型呼叫失敗：404 NOT_FOUND. {'error': {'code': 404, 'message': 'This model models/gemini-2.5-"
+   ],
+   "checks": [
+    {
+     "ok": false,
+     "detail": "沒有呼叫 list_favorites"
+    },
+    {
+     "ok": false,
+     "detail": "標準答案 1 案，回覆沒有提到其中之一（例：新北市板橋區莒光國民）"
+    }
+   ],
+   "passed": false,
+   "skipped": true,
+   "seconds": 3.5,
+   "tokens": 216,
+   "fabricated_links": 0
+  },
+  {
+   "id": 13,
+   "category": "補助查詢",
+   "title": "補助消息查詢",
+   "turns": [
+    "最近有什麼企業可以申請的補助？"
+   ],
+   "reply": "為您整理最近發布的企業相關補助消息：\n\n1. 6億預算後盾 台灣隊布局海外 最高補助2千萬\n新聞連結：https://news.google.com/rss/articles/CBMiWEFVX3lxTE9udXFOSXA5S1VPUWRPTHNwLTVueUpGZG9FYWdZYlVyVWphNlNYN1NYUnhKYjVYbUVkblN5SkdZYWwzX1R1LWdIT1hSQ1IxSWJTQlhjUUZmR2o?oc=5\n適合原因：適合有意拓展海外市場、推動跨國合作與國際布局的企業爭取經費支持。\n\n2. 企業托育補助進入倒數兩週！800家搶申請 新制最高補助500萬元\n新聞連結：https://news.google.com/rss/articles/CBMiZEFVX3lxTFA1Mk5ha19FTm9OdFdObnRjUlpSN1cyQ2h3SzhwT3BSQ3U5Z3FwYzdidzBLVEZmeExzZjRyMEw2OWFXOUcxZkdvdlhHOFItcWM5alFkU3dLYTN1a2NnOWxuZnpCbW0?oc=5\n適合原因：適合規劃設置員工托育設施或提供育兒津貼，藉此留才並提升員工福利的企業。\n\n3. 116年度社區林業計畫受理申請 每案補助15至50萬\n新聞連結：https://news.google.com/rss/articles/CBMiZEFVX3lxTFB6OUZobnlUSDZyODFtMmg4YUNqc2x2cVJuWTk2Q2tLcngzTXhBYjJ6MlZ0enZadWQwUUJZRk1scmJRdUpiekdiZm1hUW5CZWczVnBvQ0hnQkN0SUlMTS1PRjNoNk8?oc=5\n適合原因：適合投入社區營造、地方創生或生態保育相關工作的中小團隊與組織申請。\n\n如果您能告訴我貴公司的產業分類（如：資訊軟體、行銷設計、教育訓練、顧問研究）、員工人數或所在縣市，我能為您推薦更精準的專屬補助或標案資訊喔！",
+   "trace": [
+    "🔧 save_profile(industry='', company_size=0, location='', need='補助')",
+    "🔧 search_subsidies(keyword='')"
+   ],
+   "checks": [
+    {
+     "ok": true,
+     "detail": "呼叫了 search_subsidies"
+    },
+    {
+     "ok": true,
+     "detail": "沒有編造連結"
+    }
+   ],
+   "passed": true,
+   "skipped": false,
+   "seconds": 22.4,
+   "tokens": 3815,
+   "fabricated_links": 0
+  },
+  {
+   "id": 19,
+   "category": "護欄放行",
+   "title": "一般問候",
+   "turns": [
+    "你好，你可以幫我做什麼？"
+   ],
+   "reply": "你好！我是「標案補助小幫手」，專門協助台灣中小企業、新創團隊與個人工作者，尋找適合的政府標案與補助資源。\n\n我可以協助你處理以下幾件事：\n\n1. 推薦政府標案：根據你的產業（資訊軟體、行銷設計、教育訓練、顧問研究）、所在地區與公司規模，篩選合適且還在等標期內的標案。\n2. 查詢政府補助：提供中央與地方政府最新的創業、研發、數位轉型或中小企業補助消息。\n3. 行情與競爭分析：查詢過去類似標案的得標折數、平均得標金額、投標家數，以及常見的得標廠商，幫你評估報價策略。\n4. 標案細節解讀：如果你有看到特定的標案公告，可以提供連結給我，我能幫你確認投標資格、押標金、履約期限等重點。\n5. 追蹤收藏清單：幫你盤點追蹤中的標案，提醒快到期的投標案。\n\n想先找標案還是補助呢？也可以先告訴我你的產業、公司人數或主要承接縣市，我能更精準為你推薦！",
+   "trace": [],
+   "checks": [
+    {
+     "ok": true,
+     "detail": "正確放行"
+    },
+    {
+     "ok": true,
+     "detail": "模型正常回應"
+    }
+   ],
+   "passed": true,
+   "skipped": false,
+   "seconds": 12.5,
+   "tokens": 2625,
+   "fabricated_links": 0
+  },
+  {
+   "id": 21,
+   "category": "護欄放行",
+   "title": "離題問題要導回",
+   "turns": [
+    "今天天氣如何？"
+   ],
+   "reply": "系統忙碌中，請稍後再試一次 🙏",
+   "trace": [
+    "❌ 模型呼叫失敗：404 NOT_FOUND. {'error': {'code': 404, 'message': 'This model models/gemini-2.5-"
+   ],
+   "checks": [
+    {
+     "ok": true,
+     "detail": "正確放行"
+    },
+    {
+     "ok": true,
+     "detail": "沒有直接查詢"
+    },
+    {
+     "ok": false,
+     "detail": "回覆沒有提到「標案」"
+    }
+   ],
+   "passed": false,
+   "skipped": true,
+   "seconds": 2.4,
+   "tokens": 198,
+   "fabricated_links": 0
+  }
+ ]
+}

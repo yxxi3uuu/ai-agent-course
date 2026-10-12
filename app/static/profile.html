@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>個人資料｜標案補助小幫手</title>
+    <style>
+        :root { --bg: #f5f7fa; --card: #fff; --text: #333; --title: #1a1a2e; --muted: #888; --line: #eef0f3;
+                --primary: #4a90d9; --primary-dark: #357abd; --primary-soft: #f0f7ff; --primary-border: #cfe2f7;
+                --danger: #c0392b; --danger-soft: #fdecea; --good: #1e8449; --good-soft: #e9f7ef; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+        header { background: var(--card); border-bottom: 1px solid var(--line); padding: 1rem 1.5rem; }
+        .header-inner { max-width: 760px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+        h1 { font-size: 1.3rem; color: var(--title); }
+        h1 a { color: inherit; text-decoration: none; }
+        .nav { display: flex; gap: 0.5rem; align-items: center; }
+        .btn-small { padding: 0.35rem 0.85rem; border: 1px solid #ddd; background: #f0f0f0; border-radius: 6px; font-size: 0.82rem; color: #555; cursor: pointer; text-decoration: none; font-family: inherit; }
+        .btn-small:hover { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-dark); }
+        main { max-width: 760px; margin: 0 auto; padding: 1.2rem 16px 2.5rem; }
+        .card { background: var(--card); border-radius: 12px; padding: 1.3rem 1.5rem; box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-bottom: 1.2rem; }
+        .card h2 { font-size: 1.05rem; color: var(--title); margin-bottom: 0.3rem; }
+        .card .desc { font-size: 0.8rem; color: var(--muted); margin-bottom: 1rem; line-height: 1.5; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem 1rem; }
+        .full { grid-column: 1 / -1; }
+        label { display: block; font-size: 0.82rem; color: #555; margin-bottom: 0.3rem; }
+        input, select { width: 100%; padding: 0.55rem 0.7rem; border: 1px solid #ddd; border-radius: 8px; font-size: 0.92rem; font-family: inherit; background: #fff; }
+        input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(74,144,217,0.15); }
+        input[readonly] { background: #f6f7f9; color: var(--muted); }
+        .row { display: flex; gap: 0.6rem; align-items: center; margin-top: 1.1rem; flex-wrap: wrap; }
+        .btn { padding: 0.6rem 1.4rem; border: none; border-radius: 8px; background: var(--primary); color: #fff; font-size: 0.95rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+        .btn:hover:not(:disabled) { background: var(--primary-dark); }
+        .btn:disabled { background: #b0c4de; cursor: not-allowed; }
+        .btn-danger { background: #fff; color: var(--danger); border: 1px solid #f0b4ad; }
+        .btn-danger:hover:not(:disabled) { background: var(--danger-soft); }
+        .msg { font-size: 0.85rem; padding: 0.45rem 0.7rem; border-radius: 8px; display: none; }
+        .msg.ok { display: inline-block; background: var(--good-soft); color: var(--good); }
+        .msg.err { display: inline-block; background: var(--danger-soft); color: var(--danger); }
+        .ai-note { display: flex; gap: 0.5rem; padding: 0.6rem 0.8rem; background: var(--primary-soft); border: 1px solid var(--primary-border); border-radius: 8px; font-size: 0.8rem; color: var(--primary-dark); line-height: 1.5; margin-bottom: 1rem; }
+        .meta { font-size: 0.78rem; color: var(--muted); }
+        @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } header { padding: 0.9rem 16px; } }
+    </style>
+</head>
+<body>
+<header>
+    <div class="header-inner">
+        <h1><a href="/">🤖 標案補助小幫手</a></h1>
+        <div class="nav">
+            <a class="btn-small" href="/">← 回主頁面</a>
+            <button class="btn-small" id="logout">登出</button>
+        </div>
+    </div>
+</header>
+
+<main>
+    <div class="card">
+        <h2>👤 基本資料</h2>
+        <p class="desc" id="since"></p>
+        <form id="profile-form" class="grid" novalidate>
+            <div>
+                <label for="username">帳號</label>
+                <input id="username" readonly>
+            </div>
+            <div>
+                <label for="display_name">顯示名稱</label>
+                <input id="display_name" maxlength="20" required>
+            </div>
+            <div class="full">
+                <label for="email">Email（選填）</label>
+                <input id="email" type="email" autocomplete="email" placeholder="name@example.com">
+            </div>
+
+            <div class="full" style="margin-top:0.6rem">
+                <h2>🏢 公司條件</h2>
+                <p class="desc" style="margin-bottom:0.6rem">AI 小幫手會依這些條件推薦標案與補助。</p>
+                <div class="ai-note">💡 這裡的產業、人數、地區、需求就是 AI 小幫手「已記住」的內容：在這裡修改，AI 立刻知道；你跟 AI 聊天時提到的條件，這裡也會同步更新。</div>
+            </div>
+            <div class="full">
+                <label for="company_name">公司名稱（選填）</label>
+                <input id="company_name" maxlength="50">
+            </div>
+            <div>
+                <label for="industry">產業</label>
+                <select id="industry"></select>
+            </div>
+            <div>
+                <label for="company_size">公司人數</label>
+                <input id="company_size" type="number" min="1" inputmode="numeric" placeholder="例：10">
+            </div>
+            <div>
+                <label for="location">所在／想承接的地區</label>
+                <input id="location" placeholder="例：臺中">
+            </div>
+            <div>
+                <label for="need">需求</label>
+                <select id="need">
+                    <option value="">（未設定）</option>
+                    <option value="標案">標案</option>
+                    <option value="補助">補助</option>
+                    <option value="都要">都要</option>
+                </select>
+            </div>
+            <div class="full row">
+                <button class="btn" type="submit">儲存變更</button>
+                <span class="msg" id="profile-msg" role="status"></span>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>🔒 修改密碼</h2>
+        <p class="desc">修改後，其他裝置上的登入會自動登出。</p>
+        <form id="password-form" class="grid" novalidate>
+            <div class="full">
+                <label for="current">目前的密碼</label>
+                <input id="current" type="password" autocomplete="current-password">
+            </div>
+            <div>
+                <label for="new1">新密碼</label>
+                <input id="new1" type="password" autocomplete="new-password">
+                <div class="meta" style="margin-top:0.25rem">至少 8 個字元，需包含英文字母與數字</div>
+            </div>
+            <div>
+                <label for="new2">再輸入一次新密碼</label>
+                <input id="new2" type="password" autocomplete="new-password">
+            </div>
+            <div class="full row">
+                <button class="btn" type="submit">更新密碼</button>
+                <span class="msg" id="password-msg" role="status"></span>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>🚪 登出</h2>
+        <p class="desc">登出後需要重新輸入帳號密碼。你的收藏和 AI 記住的條件都會保留。</p>
+        <button class="btn btn-danger" id="logout2">登出</button>
+    </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const FIELDS = ["display_name", "email", "company_name", "industry", "company_size", "location", "need"];
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+async function api(url, opts) {
+    const r = await fetch(url, opts);
+    if (r.status === 401) { location.href = "/login"; throw new Error("請先登入"); }
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.detail || `HTTP ${r.status}`);
+    return data;
+}
+const send = (method, body) => ({ method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+function flash(id, ok, text) {
+    const el = $(id);
+    el.className = "msg " + (ok ? "ok" : "err");
+    el.textContent = text;
+    if (ok) setTimeout(() => { el.className = "msg"; }, 3000);
+}
+
+function fill(me) {
+    $("username").value = me.username;
+    $("since").textContent = `註冊於 ${me.created_at.slice(0, 10)}`;
+    for (const f of FIELDS) {
+        if (f === "industry") continue;
+        $(f).value = me[f] ?? "";
+    }
+    $("industry").value = me.industry ?? "";
+}
+
+(async () => {
+    const me = await api("/api/me");
+    $("industry").innerHTML = `<option value="">（未設定）</option>` +
+        me.industries.map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join("");
+    // 若 AI 記住的產業已不在清單（例如產業設定被改過），仍保留顯示
+    if (me.industry && !me.industries.includes(me.industry)) {
+        $("industry").insertAdjacentHTML("beforeend", `<option value="${esc(me.industry)}">${esc(me.industry)}（已不在追蹤清單）</option>`);
+    }
+    fill(me);
+})();
+
+$("profile-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector(".btn");
+    btn.disabled = true;
+    try {
+        const body = Object.fromEntries(FIELDS.map((f) => [f, $(f).value.trim()]));
+        fill(await api("/api/me", send("PUT", body)));
+        flash("profile-msg", true, "✓ 已儲存");
+    } catch (err) {
+        flash("profile-msg", false, err.message);
+    } finally {
+        btn.disabled = false;
+    }
+});
+
+$("password-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!$("current").value || !$("new1").value) return flash("password-msg", false, "請填寫目前的密碼與新密碼");
+    if ($("new1").value !== $("new2").value) return flash("password-msg", false, "兩次輸入的新密碼不一樣");
+    const btn = e.target.querySelector(".btn");
+    btn.disabled = true;
+    try {
+        await api("/api/me/password", send("PUT", { current: $("current").value, new: $("new1").value }));
+        e.target.reset();
+        flash("password-msg", true, "✓ 密碼已更新");
+    } catch (err) {
+        flash("password-msg", false, err.message);
+    } finally {
+        btn.disabled = false;
+    }
+});
+
+async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    location.href = "/login";
+}
+$("logout").addEventListener("click", logout);
+$("logout2").addEventListener("click", logout);
+</script>
+</body>
+</html>

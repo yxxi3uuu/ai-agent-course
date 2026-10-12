@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登入｜標案補助小幫手</title>
+    <style>
+        :root { --bg: #f5f7fa; --card: #fff; --text: #333; --title: #1a1a2e; --muted: #888; --line: #eef0f3;
+                --primary: #4a90d9; --primary-dark: #357abd; --primary-soft: #f0f7ff; --danger: #c0392b; --danger-soft: #fdecea; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif;
+               background: var(--bg); color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem 16px; }
+        .wrap { width: 100%; max-width: 400px; }
+        .brand { text-align: center; margin-bottom: 1.2rem; }
+        .brand h1 { font-size: 1.5rem; color: var(--title); }
+        .brand p { color: #666; font-size: 0.85rem; margin-top: 0.3rem; line-height: 1.5; }
+        .card { background: var(--card); border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
+        .tabs { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--line); }
+        .tabs button { padding: 0.85rem; border: none; background: #fafbfc; font-size: 0.95rem; color: var(--muted); cursor: pointer; font-family: inherit; border-bottom: 2px solid transparent; }
+        .tabs button.active { background: var(--card); color: var(--primary-dark); font-weight: 600; border-bottom-color: var(--primary); }
+        form { padding: 1.3rem 1.5rem 1.5rem; }
+        label { display: block; font-size: 0.82rem; color: #555; margin: 0.8rem 0 0.3rem; }
+        label:first-child { margin-top: 0; }
+        input { width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; font-family: inherit; }
+        input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(74,144,217,0.15); }
+        .hint { font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; }
+        .btn { width: 100%; margin-top: 1.2rem; padding: 0.7rem; border: none; border-radius: 8px; background: var(--primary); color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+        .btn:hover:not(:disabled) { background: var(--primary-dark); }
+        .btn:disabled { background: #b0c4de; cursor: not-allowed; }
+        .error { display: none; margin-top: 0.9rem; padding: 0.55rem 0.75rem; border-radius: 8px; background: var(--danger-soft); color: var(--danger); font-size: 0.85rem; }
+        .error.show { display: block; }
+        .foot { text-align: center; font-size: 0.75rem; color: var(--muted); margin-top: 1rem; line-height: 1.6; }
+        [hidden] { display: none !important; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="brand">
+        <h1>🤖 標案補助小幫手</h1>
+        <p>每天整理政府標案、得標行情與補助消息<br>登入後 AI 會記住你的公司條件</p>
+    </div>
+    <div class="card">
+        <div class="tabs" role="tablist">
+            <button type="button" id="tab-login" class="active" role="tab">登入</button>
+            <button type="button" id="tab-register" role="tab">註冊</button>
+        </div>
+
+        <form id="login-form" novalidate>
+            <label for="l-user">帳號</label>
+            <input id="l-user" autocomplete="username" required autofocus>
+            <label for="l-pass">密碼</label>
+            <input id="l-pass" type="password" autocomplete="current-password" required>
+            <button class="btn" type="submit">登入</button>
+            <div class="error" role="alert"></div>
+        </form>
+
+        <form id="register-form" novalidate hidden>
+            <label for="r-user">帳號</label>
+            <input id="r-user" autocomplete="username" required>
+            <div class="hint">3～30 個英文、數字或 _ . -，登入時使用</div>
+            <label for="r-name">顯示名稱</label>
+            <input id="r-name" maxlength="20" placeholder="例：王小明／ABC 科技">
+            <label for="r-pass">密碼</label>
+            <input id="r-pass" type="password" autocomplete="new-password" required>
+            <div class="hint">至少 8 個字元，需包含英文字母與數字</div>
+            <label for="r-pass2">再輸入一次密碼</label>
+            <input id="r-pass2" type="password" autocomplete="new-password" required>
+            <button class="btn" type="submit">建立帳號</button>
+            <div class="error" role="alert"></div>
+        </form>
+    </div>
+    <p class="foot">帳號資料只存在這台電腦的資料庫，密碼經雜湊加密儲存。</p>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+function showTab(which) {
+    const login = which === "login";
+    $("tab-login").classList.toggle("active", login);
+    $("tab-register").classList.toggle("active", !login);
+    $("login-form").hidden = !login;
+    $("register-form").hidden = login;
+    (login ? $("l-user") : $("r-user")).focus();
+}
+$("tab-login").addEventListener("click", () => showTab("login"));
+$("tab-register").addEventListener("click", () => showTab("register"));
+
+async function submit(form, url, body) {
+    const btn = form.querySelector(".btn"), err = form.querySelector(".error");
+    err.classList.remove("show");
+    btn.disabled = true;
+    try {
+        const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.detail || "發生錯誤，請稍後再試");
+        location.href = "/";
+    } catch (e) {
+        err.textContent = e.message;
+        err.classList.add("show");
+        btn.disabled = false;
+    }
+}
+
+$("login-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const err = e.target.querySelector(".error");
+    if (!$("l-user").value.trim() || !$("l-pass").value) {
+        err.textContent = "請輸入帳號和密碼"; err.classList.add("show"); return;
+    }
+    submit(e.target, "/api/auth/login", { username: $("l-user").value, password: $("l-pass").value });
+});
+
+$("register-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const err = e.target.querySelector(".error");
+    const fail = (m) => { err.textContent = m; err.classList.add("show"); };
+    if (!$("r-user").value.trim() || !$("r-pass").value) return fail("請輸入帳號和密碼");
+    if ($("r-pass").value !== $("r-pass2").value) return fail("兩次輸入的密碼不一樣");
+    submit(e.target, "/api/auth/register", {
+        username: $("r-user").value, password: $("r-pass").value, display_name: $("r-name").value,
+    });
+});
+</script>
+</body>
+</html>

@@ -92,6 +92,21 @@ CREATE TABLE IF NOT EXISTS daily_stats (
     budget_total  INTEGER,           -- 有抓明細的標案預算合計（補資料的日期為 NULL）
     PRIMARY KEY (date, industry)
 );
+CREATE TABLE IF NOT EXISTS accounts (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    username      TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    password_hash TEXT NOT NULL,     -- pbkdf2_sha256$迭代次數$salt$hash
+    display_name  TEXT NOT NULL,
+    email         TEXT,
+    company_name  TEXT,
+    created_at    TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS sessions (
+    token_hash    TEXT PRIMARY KEY,  -- 只存 token 的 SHA-256
+    account_id    INTEGER NOT NULL,
+    created_at    TEXT NOT NULL,
+    expires_at    TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS meta (
     key           TEXT PRIMARY KEY,
     value         TEXT

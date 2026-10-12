@@ -6,6 +6,7 @@
 
 首頁顯示最新一期的政府標案與補助消息，右側為 AI Agent 對話；
 服務開著時每天自動更新資料（app/scheduler.py）。
+除了登入／註冊頁與 /api/auth/*，所有頁面與 API 都需要登入（app/auth.py）。
 """
 
 import asyncio
@@ -15,10 +16,10 @@ from pathlib import Path
 
 from urllib.parse import quote
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, Response
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from app import db, export, scheduler, settings
+from app import auth, db, export, scheduler, settings
 from app.agent_tools import format_budget
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -32,10 +33,107 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="標案補助小幫手", lifespan=lifespan)
 
+PUBLIC_PATHS = {"/login", "/favicon.ico"}
+
+
+@app.middleware("http")
+async def require_login(request: Request, call_next):
+    """未登入：頁面導向 /login，API 回 401；已登入的帳號放在 request.state.account"""
+    path = request.url.path
+    request.state.account = auth.account_from_request(request)
+    if request.state.account or path in PUBLIC_PATHS or path.startswith("/api/auth/"):
+        return await call_next(request)
+    if path.startswith("/api/"):
+        return JSONResponse({"detail": "請先登入"}, status_code=401)
+    return RedirectResponse("/login", status_code=303)
+
+
+def me(request: Request) -> dict:
+    return request.state.account
+
+
+def _page(name: str) -> str:
+    return (STATIC_DIR / name).read_text(encoding="utf-8")
+
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    return (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    return _page("index.html")
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    if request.state.account:
+        return RedirectResponse("/", status_code=303)
+    return _page("login.html")
+
+
+@app.get("/profile", response_class=HTMLResponse)
+async def profile_page():
+    return _page("profile.html")
+
+
+# ===========================================================================
+# 帳號
+# ===========================================================================
+
+def _login_response(account: dict) -> JSONResponse:
+    resp = JSONResponse({"ok": True, "account": account})
+    resp.set_cookie(auth.SESSION_COOKIE, auth.create_session(account["id"]),
+                    max_age=auth.SESSION_DAYS * 86400, httponly=True, samesite="lax")
+    return resp
+
+
+@app.post("/api/auth/register")
+async def register(payload: dict):
+    try:
+        account = auth.register(str(payload.get("username", "")), str(payload.get("password", "")),
+                                str(payload.get("display_name", "")))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return _login_response(account)
+
+
+@app.post("/api/auth/login")
+async def login(payload: dict):
+    try:
+        account = await asyncio.to_thread(auth.authenticate, str(payload.get("username", "")),
+                                          str(payload.get("password", "")))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return _login_response(account)
+
+
+@app.post("/api/auth/logout")
+async def logout(request: Request):
+    auth.delete_session(request.cookies.get(auth.SESSION_COOKIE))
+    resp = JSONResponse({"ok": True})
+    resp.delete_cookie(auth.SESSION_COOKIE)
+    return resp
+
+
+@app.get("/api/me")
+async def get_me(request: Request):
+    return {**me(request), "industries": settings.industry_names()}
+
+
+@app.put("/api/me")
+async def put_me(request: Request, payload: dict):
+    try:
+        return auth.update_profile(me(request)["id"], payload)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.put("/api/me/password")
+async def put_password(request: Request, payload: dict):
+    try:
+        await asyncio.to_thread(auth.change_password, me(request)["id"],
+                                str(payload.get("current", "")), str(payload.get("new", "")))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    # 其他裝置已登出；目前這個瀏覽器重新發一組 session
+    return _login_response(auth.get_account(me(request)["id"]))
 
 
 # ===========================================================================
@@ -96,9 +194,9 @@ async def export_tenders(industry: str = "", q: str = ""):
 
 
 @app.get("/api/export/favorites.ics")
-async def export_favorites(user_id: str):
+async def export_favorites(request: Request):
     """收藏標案的截止日 → 行事曆"""
-    tenders = [{**t, "budget": format_budget(t["budget"])} for t in db.favorites(user_id)]
+    tenders = [{**t, "budget": format_budget(t["budget"])} for t in db.favorites(me(request)["user_id"])]
     return _download(export.deadlines_ics(tenders), "標案截止日.ics", "text/calendar; charset=utf-8")
 
 
@@ -141,22 +239,22 @@ async def put_industries(payload: dict):
 # ===========================================================================
 
 @app.get("/api/favorites")
-async def get_favorites(user_id: str):
+async def get_favorites(request: Request):
     return {"favorites": [{
         "title": t["title"], "unit": t["unit"], "budget": format_budget(t["budget"]),
         "deadline": t["deadline"], "url": t["url"],
-    } for t in db.favorites(user_id)]}
+    } for t in db.favorites(me(request)["user_id"])]}
 
 
 @app.post("/api/favorites")
-async def add_favorite(payload: dict):
-    db.add_favorite(str(payload["user_id"]), str(payload["url"]))
+async def add_favorite(request: Request, payload: dict):
+    db.add_favorite(me(request)["user_id"], str(payload["url"]))
     return {"ok": True}
 
 
 @app.delete("/api/favorites")
-async def remove_favorite(user_id: str, url: str):
-    db.remove_favorite(user_id, url)
+async def remove_favorite(request: Request, url: str):
+    db.remove_favorite(me(request)["user_id"], url)
     return {"ok": True}
 
 
@@ -165,24 +263,24 @@ async def remove_favorite(user_id: str, url: str):
 # ===========================================================================
 
 @app.post("/api/agent/chat")
-async def agent_chat(payload: dict):
-    """{"user_id": "...", "message": "..."}"""
+async def agent_chat(request: Request, payload: dict):
+    """{"message": "..."}"""
     from app import agent
-    user_id = str(payload.get("user_id") or "web-test")
+    user_id = me(request)["user_id"]
     trace: list[str] = []
     reply = await asyncio.to_thread(agent.chat, user_id, str(payload.get("message", "")), False, trace)
     return {"reply": reply, "trace": trace, "profile": db.get_user(user_id)}
 
 
 @app.get("/api/agent/profile")
-async def agent_profile(user_id: str):
-    return db.get_user(user_id)
+async def agent_profile(request: Request):
+    return db.get_user(me(request)["user_id"])
 
 
 @app.post("/api/agent/reset")
-async def agent_reset(payload: dict):
-    """清除某位使用者的記憶與對話"""
-    db.reset_user(str(payload.get("user_id") or ""))
+async def agent_reset(request: Request):
+    """清除目前帳號的 AI 記憶與對話"""
+    db.reset_user(me(request)["user_id"])
     return {"ok": True}
 
 

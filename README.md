@@ -28,7 +28,7 @@ pip install -r requirements.txt
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-瀏覽器打開 **http://localhost:8000**
+瀏覽器打開 **http://localhost:8000**，第一次會看到登入頁，先按「註冊」建立帳號。
 
 第一次啟動時資料庫是空的，服務會自動在背景抓取資料（約 5～8 分鐘），完成後頁面會自動顯示。
 
@@ -45,6 +45,7 @@ python -m app.backfill_awards --days 14
 
 | 區塊 | 說明 |
 |------|------|
+| 👤 帳號 | 註冊／登入／登出；個人資料頁可改顯示名稱、Email、公司條件與密碼。公司條件（產業、人數、地區、需求）就是 AI 記住的內容，兩邊同步 |
 | 📅 每日最新資訊 | 最新一期未截止標案（依預算排序，可依產業篩選、搜尋）、3 天內截止提醒、補助消息 |
 | ⭐ 我的追蹤 | 收藏標案、截止倒數（3 天內紅字）、一鍵加入行事曆（.ics，截止前一天提醒） |
 | ⬇️ 匯出 | 目前篩選的標案匯出 Excel |
@@ -85,7 +86,8 @@ python -m app.evaluate       # 跑一次自動評估，報告存在 data/eval/
 
 ```
 ├── app/
-│   ├── main.py              # FastAPI 入口（首頁、每日資訊 API、Agent API）
+│   ├── main.py              # FastAPI 入口（頁面、登入檢查、每日資訊 API、Agent API）
+│   ├── auth.py              # 帳號：註冊、登入、session、密碼雜湊
 │   ├── scheduler.py         # 每日自動更新
 │   ├── run_daily.py         # 抓取 → 清理 → 入庫
 │   ├── pipeline.py          # 6 步驟清理流程
@@ -98,7 +100,7 @@ python -m app.evaluate       # 跑一次自動評估，報告存在 data/eval/
 │   ├── export.py            # 匯出 Excel／行事曆
 │   ├── settings.py          # 產業設定讀寫與檢查
 │   ├── daily_config.json    # 每日資料設定
-│   └── static/index.html    # 首頁
+│   └── static/             # 首頁 index.html、登入 login.html、個人資料 profile.html
 ├── scripts/
 │   ├── fetch_subsidy_tender.py  # 抓政府標案、決標結果、補助新聞
 │   ├── add_keywords_fast.py     # jieba 關鍵字
@@ -112,6 +114,13 @@ python -m app.evaluate       # 跑一次自動評估，報告存在 data/eval/
 ```
 
 ## 常見問題
+
+**Q: 忘記密碼？**
+帳號只存在這台電腦的資料庫（`data/agent.db`），沒有寄信重設功能。在執行服務的電腦上開終端機重設：
+
+```bash
+python -m app.auth reset-password 你的帳號
+```
 
 **Q: 頁面顯示「上次更新失敗」？**
 g0v 採購網 API 通常晚 2～3 天收錄，或暫時連不上；服務會在 1 小時後自動重試，也可以按「立即更新」。

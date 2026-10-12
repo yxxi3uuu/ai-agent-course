@@ -31,6 +31,7 @@
         .btn-small { padding: 0.3rem 0.8rem; border: 1px solid #ddd; background: #f0f0f0; border-radius: 6px; font-size: 0.78rem; color: #555; cursor: pointer; white-space: nowrap; text-decoration: none; display: inline-block; }
         .btn-small:hover:not(:disabled) { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-dark); }
         .btn-small:disabled { opacity: 0.5; cursor: not-allowed; }
+        .user-link { max-width: 12rem; overflow: hidden; text-overflow: ellipsis; background: var(--primary-soft); border-color: var(--primary-border); color: var(--primary-dark); }
 
         .layout { max-width: 1300px; margin: 0 auto; padding: 1.2rem 1.5rem 2rem; display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 1.2rem; align-items: start; }
         .card { background: var(--card); border-radius: 12px; padding: 1.2rem 1.4rem; box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-bottom: 1.2rem; }
@@ -189,6 +190,8 @@
             <span class="pill" id="update-pill">載入中…</span>
             <button class="btn-small" id="update-btn">立即更新</button>
             <button class="btn-small" id="settings-btn">⚙️ 產業設定</button>
+            <a class="btn-small user-link" id="user-link" href="/profile" title="個人資料">👤 <span id="user-name">…</span></a>
+            <button class="btn-small" id="logout-btn">登出</button>
         </div>
     </div>
 </header>
@@ -308,17 +311,6 @@ const PAGE = 20;
 const $ = (id) => document.getElementById(id);
 let allTenders = [], lastDigest = { tenders: [], subsidies: [] }, shown = PAGE, industry = "全部", industryNames = [], favUrls = new Set();
 
-function getUserId() {
-    let id = null;
-    try { id = localStorage.getItem("agent_user_id"); } catch (e) {}
-    if (!id) {
-        id = "web-" + Math.random().toString(36).slice(2, 10);
-        try { localStorage.setItem("agent_user_id", id); } catch (e) {}
-    }
-    return id;
-}
-const userId = getUserId();
-
 function esc(s) {
     return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
@@ -336,6 +328,7 @@ function seriesColor(name) {
 }
 async function api(url, opts) {
     const r = await fetch(url, opts);
+    if (r.status === 401) { location.href = "/login"; throw new Error("請先登入"); }
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(data.detail || `HTTP ${r.status}`);
     return data;
@@ -447,11 +440,11 @@ $("tenders").addEventListener("click", async (e) => {
 /* ---------------- 我的追蹤 ---------------- */
 
 async function loadFavorites() {
-    const data = await api(`/api/favorites?user_id=${encodeURIComponent(userId)}`);
+    const data = await api("/api/favorites");
     favUrls = new Set(data.favorites.map((f) => f.url));
     $("fav-count").textContent = data.favorites.length ? `${data.favorites.length} 件` : "";
     $("fav-ics").style.display = data.favorites.length ? "" : "none";
-    $("fav-ics").href = `/api/export/favorites.ics?user_id=${encodeURIComponent(userId)}`;
+    $("fav-ics").href = "/api/export/favorites.ics";
     $("favorites").innerHTML = data.favorites.length ? data.favorites.map((f) => {
         const d = daysLeft(f.deadline);
         const cls = d === null ? "" : d < 0 ? "closed" : d <= 3 ? "urgent" : "";
@@ -471,9 +464,9 @@ async function loadFavorites() {
 
 async function toggleFavorite(url) {
     if (favUrls.has(url)) {
-        await api(`/api/favorites?user_id=${encodeURIComponent(userId)}&url=${encodeURIComponent(url)}`, { method: "DELETE" });
+        await api(`/api/favorites?url=${encodeURIComponent(url)}`, { method: "DELETE" });
     } else {
-        await api("/api/favorites", jsonBody("POST", { user_id: userId, url }));
+        await api("/api/favorites", jsonBody("POST", { url }));
     }
     await loadFavorites();
     renderTenders();
@@ -816,7 +809,7 @@ const PROFILE_LABELS = { industry: "", company_size: " 人", location: "", need:
 function renderProfile(p) {
     const tags = Object.entries(PROFILE_LABELS).filter(([k]) => p && p[k]).map(([k, suffix]) => `<span class="tag">${esc(p[k])}${suffix}</span>`).join("");
     $("profile").innerHTML = (tags ? `已記住：${tags}` : "還不知道你的公司條件，告訴我產業和地區吧") +
-        `<button class="link-btn" id="reset">清除記憶</button>`;
+        `<a class="link-btn" href="/profile" style="margin-left:auto">編輯</a><button class="link-btn" id="reset" style="margin-left:0.4rem">清除記憶</button>`;
 }
 
 function addMessage(role, text, trace) {
@@ -844,7 +837,7 @@ async function send(text) {
     $("send").disabled = true;
     $("typing").classList.add("active");
     try {
-        const data = await api("/api/agent/chat", jsonBody("POST", { user_id: userId, message: text }));
+        const data = await api("/api/agent/chat", jsonBody("POST", { message: text }));
         addMessage("bot", data.reply || "（沒有回覆）", data.trace);
         renderProfile(data.profile);
     } catch (e) {
@@ -874,15 +867,25 @@ $("input").addEventListener("keydown", (e) => {
 $("profile").addEventListener("click", async (e) => {
     if (e.target.id !== "reset") return;
     if (!confirm("清除小幫手記住的公司條件和對話紀錄？（追蹤的標案會保留）")) return;
-    await api("/api/agent/reset", jsonBody("POST", { user_id: userId }));
+    await api("/api/agent/reset", { method: "POST" });
     $("messages").innerHTML = "";
     addMessage("bot", "記憶已清除，我們重新開始吧！");
     renderProfile(null);
 });
 $("fab").addEventListener("click", () => $("chat").scrollIntoView({ behavior: "smooth" }));
 
-addMessage("bot", "👋 嗨！我是標案補助小幫手。\n左邊是今天最新的標案、得標行情和補助；告訴我你的產業、人數和地區，我幫你挑出最適合的案子。\n\n也可以問我「這類案子通常幾折得標、誰常得標」，或在標案按「問小幫手」，我會讀公告幫你整理資格和押標金。");
-api(`/api/agent/profile?user_id=${encodeURIComponent(userId)}`).then(renderProfile).catch(() => renderProfile(null));
+$("logout-btn").addEventListener("click", async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    location.href = "/login";
+});
+
+api("/api/me").then((me) => {
+    $("user-name").textContent = me.display_name;
+    const known = me.industry ? `我記得你是${me.location ? me.location + "的" : ""}${me.industry}${me.company_size ? "（" + me.company_size + " 人）" : ""}，直接問我「有什麼適合我的標案？」就好。`
+                              : "告訴我你的產業、人數和地區（或到右上角個人資料填寫），我幫你挑出最適合的案子。";
+    addMessage("bot", `👋 嗨，${me.display_name}！我是標案補助小幫手。\n左邊是今天最新的標案、得標行情和補助；${known}\n\n也可以問我「這類案子通常幾折得標、誰常得標」，或在標案按「問小幫手」，我會讀公告幫你整理資格和押標金。`);
+    renderProfile(me);
+}).catch(() => {});
 
 (async () => {
     await loadIndustries();

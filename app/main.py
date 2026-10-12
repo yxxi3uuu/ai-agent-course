@@ -18,6 +18,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from app.pipeline import run_pipeline, JobStatus, jobs
 from app import config_manager
+from app.line_bot import router as line_router
 
 app = FastAPI(title="文件提取服務")
 
@@ -30,6 +31,27 @@ TEMP_DIR.mkdir(exist_ok=True)
 HISTORY_PATH = Path(__file__).parent / "history.json"
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+app.include_router(line_router)
+
+
+# ===========================================================================
+# 標案補助小幫手 Agent
+# ===========================================================================
+
+@app.post("/api/agent/chat")
+async def agent_chat(payload: dict):
+    """不經過 LINE 的測試入口：{"user_id": "...", "message": "..."}"""
+    from app import agent
+    user_id = str(payload.get("user_id") or "web-test")
+    reply = await asyncio.to_thread(agent.chat, user_id, str(payload.get("message", "")))
+    return {"reply": reply}
+
+
+@app.get("/api/agent/usage")
+async def agent_usage():
+    """每日使用人數、對話數與 token 用量（監控用）"""
+    from app import db
+    return {"days": db.usage_summary()}
 
 
 # ===========================================================================

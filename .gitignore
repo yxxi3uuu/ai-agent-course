@@ -9,3 +9,4 @@ data/
 819/
 *.zip
 job_mining_platform*/
+.env

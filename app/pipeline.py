@@ -32,6 +32,8 @@ class JobStatus:
     # 進度追蹤
     progress_current: int = 0
     progress_total: int = 0
+    # 指定設定（每日排程用）；None 時讀 app/config.json
+    config: dict | None = None
 
 
 jobs: dict[str, JobStatus] = {}
@@ -263,7 +265,7 @@ def _step2_keywords(job: JobStatus, output_dir: Path) -> int:
     from app.config_manager import load_config
 
     # 載入使用者自訂停用詞
-    config = load_config()
+    config = job.config if job.config is not None else load_config()
     user_stopwords = set(config.get("stopwords", []))
     combined_stopwords = STOPWORDS | user_stopwords
 
@@ -354,7 +356,7 @@ def _step3_filter(job: JobStatus, output_dir: Path) -> tuple[int, int]:
     from filter_articles import parse_articles, check_ad_by_content, ARTICLE_RE
     from app.config_manager import load_config
 
-    config = load_config()
+    config = job.config if job.config is not None else load_config()
     user_keywords = config.get("filter_keywords", {})
     settings = config.get("filter_settings", {})
 

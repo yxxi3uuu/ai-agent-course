@@ -60,6 +60,35 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 ---
 
+## 標案補助小幫手（AI Agent 期末專題）
+
+把上面的處理流程接上每日排程，做成 LINE 上的 AI Agent：每天整理政府標案與補助消息，
+依使用者的產業與地區推播，並用 Gemini（tool calling）回答查詢。
+完整設計、安裝步驟（Gemini key、LINE、ngrok、排程）與報告對照請看 [docs/agent_設計.md](docs/agent_設計.md)。
+
+```bash
+cp .env.example .env                   # 填入 GEMINI_API_KEY 與 LINE 金鑰
+python -m app.run_daily                # 抓資料 → 6 步驟清理 → 寫入 data/agent.db
+python -m app.agent                    # 在終端機與 Agent 對話測試
+python scripts/push_line.py --dry-run  # 預覽每位訂閱者的推播內容
+```
+
+| 輸出 | 用途 |
+|------|------|
+| `data/daily/<日期>/final/` | 清理後 txt + xlsx |
+| `data/daily/<日期>/digest.md` | 當日快報（依產業分類、預算排序） |
+| `data/agent.db` | 標案、補助、使用者記憶、對話紀錄、token 用量 |
+
+| 網址 | 功能 |
+|------|------|
+| `POST /line/webhook` | LINE webhook |
+| `POST /api/agent/chat` | 不經 LINE 的測試入口 `{"user_id": "...", "message": "..."}` |
+| `GET /api/agent/usage` | 每日使用人數與 token 用量 |
+
+要追蹤的產業、補助搜尋關鍵字、過濾詞和停用詞都在 `app/daily_config.json` 設定。
+
+---
+
 ## 處理步驟說明
 
 | 步驟 | 做什麼 |
@@ -84,6 +113,13 @@ doc-extractor/
 │   ├── pipeline.py         # 處理流程邏輯
 │   ├── config_manager.py   # 設定管理
 │   ├── config.json         # 過濾關鍵字 + 停用詞設定
+│   ├── run_daily.py        # 每日排程入口
+│   ├── ingest.py           # 清理結果寫入 SQLite
+│   ├── db.py               # SQLite（標案、補助、使用者記憶、用量）
+│   ├── agent.py            # Gemini Agent＋輸入／輸出護欄
+│   ├── agent_tools.py      # Agent 工具（查標案、查補助、讀公告…）
+│   ├── line_bot.py         # LINE webhook 與推播
+│   ├── daily_config.json   # 每日快報設定（產業、搜尋字、過濾詞）
 │   ├── history.json        # 處理歷史紀錄（自動產生）
 │   ├── static/             # 前端頁面
 │   │   ├── index.html
@@ -97,7 +133,12 @@ doc-extractor/
 │   ├── dedup_articles.py           # 去重複
 │   ├── clean.py                    # 正文清理
 │   ├── fix_headers.py              # 表頭修正
+│   ├── fetch_subsidy_tender.py     # 抓政府標案＋補助新聞
+│   ├── push_line.py                # LINE 個人化推播
+│   ├── daily_task.bat              # 給工作排程器呼叫
 │   └── count_pdf_chars.py          # 輔助：字數統計
+├── docs/agent_設計.md       # Agent 設計、安裝與期末報告對照
+├── data/                   # 每日輸出（不進 git）
 ├── requirements.txt
 ├── README.md
 └── .gitignore

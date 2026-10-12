@@ -1,171 +1,104 @@
-# 文件提取服務
+# 🤖 標案補助小幫手
 
-一個本地端的 Web 工具，把 PDF / Word / Excel / TXT 丟進去，自動幫你：
-1. 提取文章內容
-2. 用 jieba 產生關鍵字
-3. 過濾不相關的文章（可自訂規則）
-4. 去除重複文章
-5. 清理正文雜訊
-6. 整理成乾淨的 txt + xlsx 輸出
+每天自動整理**政府電子採購網的新標案**與**補助／獎勵消息**，打開網頁就能看到當天最新資訊；
+右側的 **AI Agent**（Gemini）會記住你的公司條件，從資料庫中精準篩選、推薦適合的案子，並能讀取公告回答資格與押標金。
+
+> 中央大學 115-1「AI Agent」期末專題。設計說明與課綱對照見 [docs/agent_設計.md](docs/agent_設計.md)。
 
 ---
 
 ## 快速開始
 
-### 1. 安裝 Python
+### 1. 安裝
 
-需要 Python 3.10 以上。確認方式：
-
-```bash
-python --version
-```
-
-### 2. 安裝依賴套件
-
-在專案資料夾內執行：
+需要 Python 3.10 以上。
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. 啟動服務
+### 2. 設定 Gemini API key
+
+1. 到 https://aistudio.google.com/apikey 建立 API key（免費）
+2. 把 `.env.example` 複製成 `.env`，填入 `GEMINI_API_KEY`
+
+### 3. 啟動
 
 ```bash
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-### 4. 開始使用
-
 瀏覽器打開 **http://localhost:8000**
 
----
-
-## 使用方式
-
-1. 把檔案（PDF / Word / Excel / TXT）拖到上傳區，或點選檔案
-2. 勾選你要跑的步驟（預設全部打勾）
-3. 選匯出格式（TXT / Excel / 兩個都要）
-4. 按「開始處理」，等進度跑完
-5. 下載 ZIP 或直接在網頁預覽結果
+第一次啟動時資料庫是空的，服務會自動在背景抓取資料（約 3～5 分鐘），完成後頁面會自動顯示。
 
 ---
 
-## 頁面說明
+## 功能
 
-| 網址 | 功能 |
+| 區塊 | 說明 |
 |------|------|
-| `http://localhost:8000` | 主頁 — 上傳檔案、處理、下載 |
-| `http://localhost:8000/settings` | 設定過濾關鍵字（決定哪些文章要刪掉） |
-| `http://localhost:8000/stopwords` | 設定停用詞（哪些詞不要出現在關鍵字裡） |
+| 📅 每日最新資訊 | 最新一期未截止標案（依預算排序，可依產業篩選、搜尋）、3 天內截止提醒、補助消息 |
+| 💬 AI 小幫手 | 記住產業／人數／地區、依條件查標案與補助、讀公告回答資格與押標金 |
+| 🔄 自動更新 | 服務開著時每天 `DAILY_UPDATE_TIME`（預設 07:30）自動更新；也可按「立即更新」 |
+| 📊 系統用量 | 每日使用者數、對話數、token 用量 |
 
----
+## 每日資料流程
 
-## 標案補助小幫手（AI Agent 期末專題）
-
-把上面的處理流程接上每日排程，做成 LINE 上的 AI Agent：每天整理政府標案與補助消息，
-依使用者的產業與地區推播，並用 Gemini（tool calling）回答查詢。
-完整設計、安裝步驟（Gemini key、LINE、ngrok、排程）與報告對照請看 [docs/agent_設計.md](docs/agent_設計.md)。
-
-```bash
-cp .env.example .env                   # 填入 GEMINI_API_KEY 與 LINE 金鑰
-python -m app.run_daily                # 抓資料 → 6 步驟清理 → 寫入 data/agent.db
-python -m app.agent                    # 在終端機與 Agent 對話測試
-python scripts/push_line.py --dry-run  # 預覽每位訂閱者的推播內容
+```
+g0v 政府採購網 API ─┐
+Google 新聞 RSS ────┴→ fetch_subsidy_tender.py
+                      → pipeline：jieba 關鍵字 → 過濾 → 去重 → 清理 → 整理
+                      → ingest.py 寫入 SQLite（data/agent.db）
+                      → 首頁顯示／Agent 查詢
 ```
 
-| 輸出 | 用途 |
+也可以手動執行一次更新：
+
+```bash
+python -m app.run_daily
+```
+
+## 設定
+
+| 檔案 | 內容 |
 |------|------|
-| `data/daily/<日期>/final/` | 清理後 txt + xlsx |
-| `data/daily/<日期>/digest.md` | 當日快報（依產業分類、預算排序） |
-| `data/agent.db` | 標案、補助、使用者記憶、對話紀錄、token 用量 |
-
-| 網址 | 功能 |
-|------|------|
-| `POST /line/webhook` | LINE webhook |
-| `POST /api/agent/chat` | 不經 LINE 的測試入口 `{"user_id": "...", "message": "..."}` |
-| `GET /api/agent/usage` | 每日使用人數與 token 用量 |
-
-要追蹤的產業、補助搜尋關鍵字、過濾詞和停用詞都在 `app/daily_config.json` 設定。
-
----
-
-## 處理步驟說明
-
-| 步驟 | 做什麼 |
-|------|--------|
-| 1. 提取文章 | 從各種格式的檔案中抓出文章內容 |
-| 2. 產生關鍵字 | 用 jieba 分詞自動幫每篇文章標關鍵字 |
-| 3. 過濾不相關 | 根據你設定的關鍵字規則，刪掉不相關的文章 |
-| 4. 去重複 | 跨檔比對，刪掉標題相同或相似的重複文章 |
-| 5. 清理正文 | 移除 URL、email、版權聲明等雜訊 |
-| 6. 整理格式 | 修正表頭、重新編號、同步產生 Excel |
-
-步驟 1 和 2 是基本流程，3~6 可以依需求自行勾選。
-
----
+| `.env` | Gemini API key、模型、每日更新時間 |
+| `app/daily_config.json` | 追蹤的產業與標的分類、補助搜尋關鍵字、過濾詞、停用詞 |
 
 ## 資料夾結構
 
 ```
-doc-extractor/
-├── app/                    # Web 應用程式
-│   ├── main.py             # FastAPI 路由
-│   ├── pipeline.py         # 處理流程邏輯
-│   ├── config_manager.py   # 設定管理
-│   ├── config.json         # 過濾關鍵字 + 停用詞設定
-│   ├── run_daily.py        # 每日排程入口
-│   ├── ingest.py           # 清理結果寫入 SQLite
-│   ├── db.py               # SQLite（標案、補助、使用者記憶、用量）
-│   ├── agent.py            # Gemini Agent＋輸入／輸出護欄
-│   ├── agent_tools.py      # Agent 工具（查標案、查補助、讀公告…）
-│   ├── line_bot.py         # LINE webhook 與推播
-│   ├── daily_config.json   # 每日快報設定（產業、搜尋字、過濾詞）
-│   ├── history.json        # 處理歷史紀錄（自動產生）
-│   ├── static/             # 前端頁面
-│   │   ├── index.html
-│   │   ├── settings.html
-│   │   └── stopwords.html
-│   └── temp/               # 暫存（自動產生，處理中的檔案）
-├── scripts/                # 核心處理腳本
-│   ├── extract_keyword_context.py  # PDF 提取核心
-│   ├── add_keywords_fast.py        # jieba 關鍵字
-│   ├── filter_articles.py          # 文章過濾
-│   ├── dedup_articles.py           # 去重複
-│   ├── clean.py                    # 正文清理
-│   ├── fix_headers.py              # 表頭修正
-│   ├── fetch_subsidy_tender.py     # 抓政府標案＋補助新聞
-│   ├── push_line.py                # LINE 個人化推播
-│   ├── daily_task.bat              # 給工作排程器呼叫
-│   └── count_pdf_chars.py          # 輔助：字數統計
-├── docs/agent_設計.md       # Agent 設計、安裝與期末報告對照
-├── data/                   # 每日輸出（不進 git）
-├── requirements.txt
-├── README.md
-└── .gitignore
+├── app/
+│   ├── main.py              # FastAPI 入口（首頁、每日資訊 API、Agent API）
+│   ├── scheduler.py         # 每日自動更新
+│   ├── run_daily.py         # 抓取 → 清理 → 入庫
+│   ├── pipeline.py          # 6 步驟清理流程
+│   ├── ingest.py            # 清理結果寫入 SQLite
+│   ├── db.py                # SQLite（標案、補助、使用者記憶、用量）
+│   ├── agent.py             # Gemini Agent＋輸入／輸出護欄
+│   ├── agent_tools.py       # Agent 工具（查標案、查補助、讀公告、記住條件）
+│   ├── daily_config.json    # 每日資料設定
+│   └── static/index.html    # 首頁
+├── scripts/
+│   ├── fetch_subsidy_tender.py  # 抓政府標案＋補助新聞
+│   ├── add_keywords_fast.py     # jieba 關鍵字
+│   ├── filter_articles.py       # 過濾
+│   ├── dedup_articles.py        # 去重複
+│   └── clean.py                 # 正文清理
+├── docs/agent_設計.md
+├── data/                    # 每日資料與資料庫（自動產生，不進 git）
+├── .env.example
+└── requirements.txt
 ```
-
----
-
-## 依賴套件
-
-- **fastapi** + **uvicorn** — Web 服務
-- **sse-starlette** — 即時進度推送
-- **python-multipart** — 檔案上傳
-- **PyMuPDF** — PDF 文字提取
-- **python-docx** — Word 文件讀取
-- **jieba** — 中文分詞 / 關鍵字
-- **openpyxl** — Excel 讀寫
-- **tqdm** — 命令列進度條
-
----
 
 ## 常見問題
 
-**Q: 啟動後瀏覽器打不開？**
-確認用的是 `http://localhost:8000`，不是 `http://0.0.0.0:8000`。
+**Q: 頁面顯示「上次更新失敗」？**
+g0v 採購網 API 通常晚 2～3 天收錄，或暫時連不上；服務會在 1 小時後自動重試，也可以按「立即更新」。
 
-**Q: PyMuPDF 安裝失敗？**
-不要鎖版本，直接 `pip install PyMuPDF` 讓它自動找相容的預編譯版本。
+**Q: 小幫手回覆「系統忙碌中」？**
+Gemini 免費額度每分鐘次數有限，等一分鐘再試；程式已會自動改用備援模型。
 
-**Q: 處理完下載是空的？**
-確認你上傳的 PDF 裡面有文字內容（掃描圖片的 PDF 沒辦法提取）。
+**Q: 資料來源可以商用嗎？**
+Google 新聞 RSS 僅限個人使用；正式商用請改接各部會官方公告來源。

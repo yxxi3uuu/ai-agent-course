@@ -2,7 +2,7 @@
 """
 每日標案／補助快報：抓資料 → 跑既有 pipeline（關鍵字、過濾、去重、清理、整理）→ 產生快報。
 
-給排程器（Windows 工作排程器 / cron / GitHub Actions）呼叫：
+網頁服務啟動後會每天自動呼叫（app/scheduler.py）；也可以手動執行：
     python -m app.run_daily
     python -m app.run_daily --date 20261009
     python -m app.run_daily --skip-fetch      # 只重跑 pipeline，不重新抓資料
@@ -10,9 +10,8 @@
 輸出（data/daily/<date>/）：
     raw/        原始抓取結果
     final/      清理後的 txt + xlsx
-    digest.md   今日快報（LINE 推播 / 報告展示用）
-並寫進 data/agent.db 給 Agent 查詢。
-另外會複製一份到 data/latest/，方便固定路徑上傳。
+    digest.md   今日快報（Agent 的 get_today_digest 工具使用）
+並寫進 data/agent.db 給首頁與 Agent 查詢；data/latest/ 為最新一份的固定路徑副本。
 """
 
 import argparse
@@ -101,54 +100,47 @@ def build_digest(date: str, items: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser(description="每日政府標案／補助快報")
-    ap.add_argument("--date", default=None, help="標案公告日期 YYYYMMDD（預設最近有資料的一天）")
-    ap.add_argument("--skip-fetch", action="store_true", help="不重新抓資料，直接用 raw/ 重跑")
-    ap.add_argument("--config", default=str(DAILY_CONFIG_PATH))
-    args = ap.parse_args()
-
-    config = json.loads(Path(args.config).read_text(encoding="utf-8"))
-    if not args.date:
+def run_daily(date: str | None = None, skip_fetch: bool = False,
+              config_path: Path = DAILY_CONFIG_PATH, log=print) -> dict:
+    """完整跑一次每日更新，回傳 {"ok", "date", "tenders", "subsidies", "message"}"""
+    config = json.loads(Path(config_path).read_text(encoding="utf-8"))
+    if not date:
         # 當天資料還沒收齊，從昨天往前找
-        args.date = latest_tender_date((datetime.now() - timedelta(days=1)).strftime("%Y%m%d"))
-        if not args.date:
-            print("❌ 最近 7 天都沒有標案資料")
-            return 1
-    day_dir = DATA_DIR / "daily" / args.date
+        date = latest_tender_date((datetime.now() - timedelta(days=1)).strftime("%Y%m%d"))
+        if not date:
+            return {"ok": False, "date": None, "message": "最近 7 天都沒有標案資料"}
+    day_dir = DATA_DIR / "daily" / date
     raw_dir = day_dir / "raw"
     work_dir = day_dir / "work"
 
-    if not args.skip_fetch:
-        print(f"🌐 抓取資料（{args.date}）...")
-        counts = fetch_all(args.date, raw_dir, config)
-        print(f"  標案 {counts['tenders']} 筆、補助新聞 {counts['subsidies']} 則")
+    if not skip_fetch:
+        log(f"🌐 抓取資料（{date}）...")
+        counts = fetch_all(date, raw_dir, config, log)
+        log(f"  標案 {counts['tenders']} 筆、補助新聞 {counts['subsidies']} 則")
 
     if not raw_dir.exists() or not any(raw_dir.glob("*.txt")):
-        print("❌ 沒有可處理的資料")
-        return 1
+        return {"ok": False, "date": date, "message": "沒有可處理的資料"}
 
-    print("⚙️ 執行 pipeline...")
+    log("⚙️ 執行 pipeline...")
     if work_dir.exists():
         shutil.rmtree(work_dir)
     work_dir.mkdir(parents=True)
     job = JobStatus(
-        job_id=f"daily-{args.date}", total_files=0, selected_steps=[1, 2, 3, 4, 5, 6],
+        job_id=f"daily-{date}", total_files=0, selected_steps=[1, 2, 3, 4, 5, 6],
         input_dir=raw_dir, output_dir=work_dir, config=config,
     )
-    run_pipeline_sync(job)
+    run_pipeline_sync(job, log)
 
     final_dir = day_dir / "final"
     if final_dir.exists():
         shutil.rmtree(final_dir)
     shutil.copytree(work_dir / "final", final_dir)
 
-    n_tender, n_subsidy = ingest(final_dir, args.date)
-    print(f"🗄️ 寫入資料庫：標案 {n_tender}、補助 {n_subsidy}")
+    n_tender, n_subsidy = ingest(final_dir, date)
+    log(f"🗄️ 寫入資料庫：標案 {n_tender}、補助 {n_subsidy}")
 
     items = parse_final(final_dir)
-    digest = build_digest(args.date, items)
-    (day_dir / "digest.md").write_text(digest, encoding="utf-8")
+    (day_dir / "digest.md").write_text(build_digest(date, items), encoding="utf-8")
 
     latest = DATA_DIR / "latest"
     if latest.exists():
@@ -156,8 +148,21 @@ def main() -> int:
     shutil.copytree(final_dir, latest)
     shutil.copy2(day_dir / "digest.md", latest / "digest.md")
 
-    print(f"🎉 完成：{len(items)} 篇 → {final_dir}")
-    print(f"📢 快報：{day_dir / 'digest.md'}")
+    log(f"🎉 完成：{len(items)} 篇 → {final_dir}")
+    return {"ok": True, "date": date, "tenders": n_tender, "subsidies": n_subsidy,
+            "message": f"標案 {n_tender} 件、補助 {n_subsidy} 則"}
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="每日政府標案／補助快報")
+    ap.add_argument("--date", default=None, help="標案公告日期 YYYYMMDD（預設最近有資料的一天）")
+    ap.add_argument("--skip-fetch", action="store_true", help="不重新抓資料，直接用 raw/ 重跑")
+    ap.add_argument("--config", default=str(DAILY_CONFIG_PATH))
+    args = ap.parse_args()
+    result = run_daily(args.date, args.skip_fetch, Path(args.config))
+    if not result["ok"]:
+        print(f"❌ {result['message']}")
+        return 1
     return 0
 
 

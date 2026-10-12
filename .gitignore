@@ -1,12 +1,9 @@
 __pycache__/
 *.pyc
 .vscode/
-app/temp/
-app/history.json
-app/dict_history.json
-app/dictionaries/
 data/
 819/
 *.zip
 job_mining_platform*/
 .env
+.claude/

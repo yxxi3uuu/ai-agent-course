@@ -192,18 +192,6 @@ def make_tools(ctx: ToolContext) -> list:
                               location=normalize_place(location), need=need)
         return {"已儲存": {k: user[k] for k in ("industry", "company_size", "location", "need")}}
 
-    def set_subscription(subscribe: bool) -> dict:
-        """開啟或關閉每日早上的個人化快報推播。
-
-        Args:
-            subscribe: True 訂閱，False 取消訂閱
-        """
-        ctx.calls.append(f"set_subscription({subscribe})")
-        user = db.update_user(ctx.user_id, subscribed=1 if subscribe else 0)
-        if subscribe and not user.get("industry"):
-            return {"訂閱": True, "提醒": "尚未設定產業，推播會包含所有產業；請使用者告訴你他的產業"}
-        return {"訂閱": bool(user["subscribed"])}
-
     def get_today_digest() -> dict:
         """取得最新一期的「政府標案＋補助快報」全文。"""
         ctx.calls.append("get_today_digest()")
@@ -214,45 +202,4 @@ def make_tools(ctx: ToolContext) -> list:
         return {"快報": text}
 
     return [search_tenders, search_subsidies, read_tender_page,
-            save_profile, set_subscription, get_today_digest]
-
-
-# ===========================================================================
-# 個人化快報（每日推播用，不經過 LLM，省額度）
-# ===========================================================================
-
-def personal_digest(user: dict, top_n: int = 8) -> str | None:
-    ctx = ToolContext(user_id=user["user_id"])
-    search_tenders, search_subsidies = make_tools(ctx)[:2]
-    industry = user.get("industry") or ""
-    location = user.get("location") or ""
-    need = user.get("need") or "都要"
-
-    lines = [f"📢 {datetime.now():%m/%d} 標案＋補助快報"]
-    if industry or location:
-        lines.append(f"（{industry or '全部產業'}｜{location or '全國'}）")
-
-    if need in ("標案", "都要"):
-        res = search_tenders(industry=industry, location=location, limit=top_n)
-        # 地區篩完太少時放寬成全國
-        if res["符合筆數"] < 3 and location:
-            res = search_tenders(industry=industry, limit=top_n)
-            lines.append(f"\n🏛️ {location}案子較少，改列全國：")
-        else:
-            lines.append("\n🏛️ 未截止標案：")
-        for t in res["標案"]:
-            lines.append(f"・{t['標案名稱']}｜{t['機關']}｜{t['預算']}｜截止 {t['截止投標']}")
-        if not res["標案"]:
-            lines.append("・目前沒有符合條件的未截止標案")
-        if res["符合筆數"] > len(res["標案"]):
-            lines.append(f"…共 {res['符合筆數']} 件，回覆「列出更多標案」查看")
-
-    if need in ("補助", "都要"):
-        res = search_subsidies(limit=5)
-        if res["補助消息"]:
-            lines.append("\n💰 補助消息：")
-            for s in res["補助消息"]:
-                lines.append(f"・{s['標題']}")
-
-    lines.append("\n💬 想看細節或資格，直接問我；回覆「取消訂閱」可停止推播")
-    return "\n".join(lines)
+            save_profile, get_today_digest]

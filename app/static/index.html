@@ -3,417 +3,399 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>文件提取服務</title>
+    <title>標案補助小幫手</title>
     <style>
+        :root {
+            --bg: #f5f7fa; --card: #fff; --text: #333; --title: #1a1a2e; --muted: #888; --line: #eef0f3;
+            --primary: #4a90d9; --primary-dark: #357abd; --primary-soft: #f0f7ff; --primary-border: #cfe2f7;
+            --danger: #e74c3c; --danger-soft: #fdecea; --good: #27ae60;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif;
-            background: #f5f7fa; color: #333; min-height: 100vh; padding: 2rem;
+            background: var(--bg); color: var(--text); min-height: 100vh;
         }
-        .container { max-width: 850px; margin: 0 auto; }
-        h1 { text-align: center; margin-bottom: 0.3rem; color: #1a1a2e; font-size: 1.8rem; }
-        .subtitle { text-align: center; color: #666; margin-bottom: 1.5rem; font-size: 0.95rem; }
+        a { color: var(--primary-dark); }
 
-        .card { background: #fff; border-radius: 12px; padding: 1.5rem 2rem; box-shadow: 0 2px 12px rgba(0,0,0,0.08); margin-bottom: 1.2rem; }
-        .card h2 { font-size: 1.05rem; margin-bottom: 0.8rem; color: #1a1a2e; }
+        /* 頁首 */
+        header { background: var(--card); border-bottom: 1px solid var(--line); padding: 1rem 1.5rem; }
+        .header-inner { max-width: 1300px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+        h1 { font-size: 1.4rem; color: var(--title); }
+        .subtitle { color: #666; font-size: 0.85rem; margin-top: 0.15rem; }
+        .update-box { display: flex; align-items: center; gap: 0.6rem; font-size: 0.8rem; color: #666; flex-wrap: wrap; }
+        .pill { padding: 0.3rem 0.7rem; border-radius: 999px; background: var(--primary-soft); border: 1px solid var(--primary-border); color: var(--primary-dark); white-space: nowrap; }
+        .pill.running { background: #fff8e6; border-color: #f5d48a; color: #a06a00; }
+        .pill.error { background: var(--danger-soft); border-color: #f5b7b1; color: #c0392b; }
+        .btn-small { padding: 0.3rem 0.8rem; border: 1px solid #ddd; background: #f0f0f0; border-radius: 6px; font-size: 0.78rem; color: #555; cursor: pointer; }
+        .btn-small:hover:not(:disabled) { background: var(--primary-soft); border-color: var(--primary); }
+        .btn-small:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .upload-zone { border: 2px dashed #ccc; border-radius: 8px; padding: 2.5rem 2rem; text-align: center; cursor: pointer; transition: all 0.2s; background: #fafbfc; }
-        .upload-zone:hover, .upload-zone.dragover { border-color: #4a90d9; background: #f0f7ff; }
-        .upload-zone .icon { font-size: 2.5rem; margin-bottom: 0.3rem; }
-        .upload-zone p { color: #666; margin-top: 0.3rem; font-size: 0.9rem; }
-
-        .file-list { margin-top: 0.8rem; max-height: 130px; overflow-y: auto; }
-        .file-item { display: flex; align-items: center; padding: 0.35rem 0.7rem; background: #f0f7ff; border-radius: 6px; margin-bottom: 0.3rem; font-size: 0.85rem; }
-        .file-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .file-item .size { color: #888; margin-left: 0.8rem; font-size: 0.78rem; }
-        .file-item .remove { margin-left: 0.5rem; cursor: pointer; color: #e74c3c; font-weight: bold; }
-
-        .steps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
-        .step-option { display: flex; align-items: center; padding: 0.5rem 0.7rem; border: 1px solid #e0e0e0; border-radius: 6px; cursor: pointer; transition: all 0.15s; font-size: 0.85rem; }
-        .step-option:hover { background: #f0f7ff; }
-        .step-option.checked { background: #e8f4fd; border-color: #4a90d9; }
-        .step-option input { margin-right: 0.4rem; }
-        .step-option .step-num { display: inline-block; width: 1.3rem; height: 1.3rem; line-height: 1.3rem; text-align: center; border-radius: 50%; background: #4a90d9; color: #fff; font-size: 0.7rem; margin-right: 0.4rem; }
-
-        .options-row { display: flex; align-items: center; gap: 1rem; margin-top: 0.8rem; flex-wrap: wrap; }
-        .options-row label { font-size: 0.85rem; color: #555; }
-        .options-row select { padding: 0.3rem 0.6rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem; }
-
-        .nav-links { text-align: center; margin-bottom: 1.2rem; display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; }
-        .nav-link { padding: 0.5rem 1rem; background: #f0f0f0; border: 1px solid #ddd; border-radius: 8px; color: #555; text-decoration: none; font-size: 0.85rem; transition: all 0.2s; }
-        .nav-link:hover { background: #e8f4fd; border-color: #4a90d9; color: #333; }
-
-        .btn { display: inline-block; padding: 0.7rem 2rem; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; text-align: center; }
-        .btn-primary { background: #4a90d9; color: #fff; width: 100%; }
-        .btn-primary:hover:not(:disabled) { background: #357abd; }
-        .btn-primary:disabled { background: #b0c4de; cursor: not-allowed; }
-        .btn-download { background: #27ae60; color: #fff; width: 100%; margin-top: 0.8rem; text-decoration: none; display: block; text-align: center; padding: 0.7rem; border-radius: 8px; font-weight: 600; }
-        .btn-download:hover { background: #219a52; }
-        .btn-preview { background: #8e44ad; color: #fff; width: 100%; margin-top: 0.5rem; text-decoration: none; display: block; text-align: center; padding: 0.6rem; border-radius: 8px; font-size: 0.9rem; cursor: pointer; border: none; }
-        .btn-preview:hover { background: #7d3c98; }
-
-        .progress-section { display: none; }
-        .progress-section.active { display: block; }
-        .progress-log { background: #1a1a2e; color: #e0e0e0; border-radius: 8px; padding: 0.8rem; font-family: "Cascadia Code", "Fira Code", monospace; font-size: 0.8rem; max-height: 250px; overflow-y: auto; line-height: 1.5; }
-        .progress-log .msg { padding: 0.05rem 0; }
-        .progress-bar-wrap { background: #e0e0e0; border-radius: 4px; height: 6px; margin-bottom: 0.8rem; overflow: hidden; }
-        .progress-bar { height: 100%; background: linear-gradient(90deg, #4a90d9, #27ae60); border-radius: 4px; width: 0%; transition: width 0.3s; }
-        .status-text { font-size: 0.9rem; color: #666; margin-bottom: 0.4rem; }
+        .layout { max-width: 1300px; margin: 0 auto; padding: 1.2rem 1.5rem 2rem; display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 1.2rem; align-items: start; }
+        .card { background: var(--card); border-radius: 12px; padding: 1.2rem 1.4rem; box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-bottom: 1.2rem; }
+        .card h2 { font-size: 1.05rem; color: var(--title); display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.8rem; }
+        .card h2 .count { font-size: 0.78rem; color: var(--muted); font-weight: 400; }
 
         /* 統計 */
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.8rem; margin-top: 0.8rem; }
-        .stat-box { background: #f8f9fa; border-radius: 8px; padding: 0.8rem; text-align: center; }
-        .stat-box .num { font-size: 1.5rem; font-weight: 700; color: #4a90d9; }
-        .stat-box .label { font-size: 0.75rem; color: #888; margin-top: 0.2rem; }
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.8rem; margin-bottom: 1.2rem; }
+        .stat { background: var(--card); border-radius: 12px; padding: 0.9rem; text-align: center; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+        .stat .num { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+        .stat .num.warn { color: var(--danger); }
+        .stat .label { font-size: 0.75rem; color: var(--muted); margin-top: 0.15rem; }
 
-        /* 預覽 */
-        .preview-section { display: none; }
-        .preview-section.active { display: block; }
-        .preview-list { max-height: 400px; overflow-y: auto; }
-        .preview-item { padding: 0.6rem 0; border-bottom: 1px solid #eee; }
-        .preview-item:last-child { border-bottom: none; }
-        .preview-item .title { font-weight: 600; font-size: 0.9rem; }
-        .preview-item .kw { color: #4a90d9; font-size: 0.8rem; margin-top: 0.2rem; }
-        .preview-item .body { color: #888; font-size: 0.78rem; margin-top: 0.2rem; }
+        /* 篩選 */
+        .filters { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.8rem; }
+        .chip { padding: 0.3rem 0.8rem; background: #f4f5f7; border: 1px solid #e3e5e8; border-radius: 999px; font-size: 0.8rem; color: #555; cursor: pointer; }
+        .chip:hover { border-color: var(--primary); }
+        .chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+        .search { flex: 1; min-width: 160px; padding: 0.35rem 0.7rem; border: 1px solid #ddd; border-radius: 8px; font-size: 0.85rem; }
+        .search:focus { outline: none; border-color: var(--primary); }
 
-        /* 歷史 */
-        .history-section { }
-        .history-item { display: flex; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid #f0f0f0; font-size: 0.85rem; }
-        .history-item:last-child { border-bottom: none; }
-        .history-item .info { flex: 1; }
-        .history-item .time { color: #888; font-size: 0.78rem; }
-        .history-item .actions { display: flex; gap: 0.5rem; }
-        .history-item .actions a, .history-item .actions button { font-size: 0.78rem; padding: 0.25rem 0.6rem; border-radius: 4px; text-decoration: none; cursor: pointer; border: 1px solid #ddd; background: #fff; color: #555; }
-        .history-item .actions a:hover, .history-item .actions button:hover { background: #f0f7ff; }
-        .history-item .actions .del-btn { color: #e74c3c; border-color: #f5c6cb; }
+        /* 標案列表 */
+        .tender { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.3rem 1rem; padding: 0.8rem 0; border-bottom: 1px solid var(--line); }
+        .tender:last-child { border-bottom: none; }
+        .tender .name { font-weight: 600; font-size: 0.92rem; line-height: 1.45; color: var(--title); text-decoration: none; }
+        .tender .name:hover { color: var(--primary-dark); text-decoration: underline; }
+        .tender .budget { font-weight: 700; color: var(--title); white-space: nowrap; text-align: right; font-size: 0.92rem; }
+        .tender .meta { font-size: 0.78rem; color: var(--muted); display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+        .tag { padding: 0.05rem 0.45rem; border-radius: 4px; background: var(--primary-soft); color: var(--primary-dark); font-size: 0.72rem; }
+        .due { padding: 0.05rem 0.45rem; border-radius: 4px; background: var(--danger-soft); color: #c0392b; font-size: 0.72rem; font-weight: 600; }
+        .ask { justify-self: end; padding: 0.2rem 0.6rem; font-size: 0.75rem; border: 1px solid var(--primary-border); background: var(--primary-soft); color: var(--primary-dark); border-radius: 6px; cursor: pointer; white-space: nowrap; }
+        .ask:hover { background: #e3f0fd; }
+        .more { width: 100%; margin-top: 0.6rem; padding: 0.5rem; border: 1px dashed #ccc; background: #fafbfc; border-radius: 8px; color: #666; cursor: pointer; font-size: 0.85rem; }
+        .more:hover { border-color: var(--primary); color: var(--primary-dark); }
+        .empty { text-align: center; color: #aaa; padding: 1.5rem 0; font-size: 0.88rem; }
 
-        @media (max-width: 600px) { body { padding: 1rem; } .steps-grid { grid-template-columns: 1fr; } .stats-grid { grid-template-columns: 1fr 1fr; } }
+        .subsidy { padding: 0.65rem 0; border-bottom: 1px solid var(--line); }
+        .subsidy:last-child { border-bottom: none; }
+        .subsidy a { font-size: 0.9rem; font-weight: 600; color: var(--title); text-decoration: none; line-height: 1.45; }
+        .subsidy a:hover { color: var(--primary-dark); text-decoration: underline; }
+        .subsidy .meta { font-size: 0.76rem; color: var(--muted); margin-top: 0.2rem; }
+
+        details.usage { font-size: 0.8rem; color: #666; }
+        details.usage summary { cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+        th, td { padding: 0.3rem 0.2rem; text-align: right; border-bottom: 1px solid var(--line); }
+        th:first-child, td:first-child { text-align: left; }
+        th { color: var(--muted); font-weight: 500; }
+
+        /* 對話 */
+        .chat { position: sticky; top: 1rem; height: calc(100vh - 2rem); max-height: 860px; display: flex; flex-direction: column; padding: 0; overflow: hidden; margin-bottom: 0; }
+        .chat-head { padding: 0.9rem 1.2rem 0.7rem; border-bottom: 1px solid var(--line); }
+        .chat-head h2 { margin-bottom: 0.4rem; }
+        .profile { display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center; font-size: 0.75rem; color: var(--muted); }
+        .profile .tag { font-size: 0.72rem; }
+        .link-btn { background: none; border: none; color: var(--muted); font-size: 0.72rem; cursor: pointer; text-decoration: underline; margin-left: auto; }
+        .link-btn:hover { color: var(--danger); }
+        .messages { flex: 1; overflow-y: auto; padding: 1rem 1.2rem; background: #f8fafc; }
+        .msg { display: flex; margin-bottom: 0.8rem; }
+        .msg.user { justify-content: flex-end; }
+        .bubble { max-width: 88%; padding: 0.6rem 0.9rem; border-radius: 14px; font-size: 0.87rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+        .msg.user .bubble { background: var(--primary); color: #fff; border-bottom-right-radius: 4px; }
+        .msg.user .bubble a { color: #fff; }
+        .msg.bot .bubble { background: #fff; border: 1px solid #e3e8ef; border-bottom-left-radius: 4px; }
+        .trace { margin-top: 0.5rem; padding-top: 0.45rem; border-top: 1px dashed #e0e0e0; font-family: "Cascadia Code", Consolas, monospace; font-size: 0.7rem; color: #8a94a6; white-space: pre-wrap; }
+        .typing { color: #999; font-size: 0.8rem; padding: 0 1.2rem 0.5rem; background: #f8fafc; display: none; }
+        .typing.active { display: block; }
+        .suggestions { display: flex; gap: 0.35rem; flex-wrap: wrap; padding: 0.6rem 1rem 0; border-top: 1px solid var(--line); }
+        .suggestions .chip { font-size: 0.74rem; padding: 0.25rem 0.6rem; background: var(--primary-soft); border-color: var(--primary-border); color: var(--primary-dark); }
+        .input-row { display: flex; gap: 0.5rem; padding: 0.7rem 1rem 0.9rem; }
+        .input-row textarea { flex: 1; resize: none; height: 42px; padding: 0.55rem 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 0.87rem; font-family: inherit; }
+        .input-row textarea:focus { outline: none; border-color: var(--primary); }
+        .btn { padding: 0 1.1rem; border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--primary); color: #fff; }
+        .btn:hover:not(:disabled) { background: var(--primary-dark); }
+        .btn:disabled { background: #b0c4de; cursor: not-allowed; }
+
+        .fab { display: none; }
+
+        @media (max-width: 980px) {
+            .layout { grid-template-columns: 1fr; padding: 1rem; }
+            .chat { position: static; height: 80vh; }
+            .stats { grid-template-columns: repeat(2, 1fr); }
+            .fab { display: block; position: fixed; right: 16px; bottom: 16px; padding: 0.7rem 1.1rem; border-radius: 999px; border: none; background: var(--primary); color: #fff; font-weight: 600; box-shadow: 0 4px 14px rgba(0,0,0,0.2); cursor: pointer; z-index: 10; }
+        }
+        @media (max-width: 560px) {
+            header { padding: 0.9rem 1rem; }
+            .tender { grid-template-columns: 1fr; }
+            .tender .budget { text-align: left; }
+            .ask { justify-self: start; }
+        }
     </style>
 </head>
 <body>
-<div class="container">
-    <h1>📰 文件提取服務</h1>
-    <p class="subtitle">丟檔案進來，幫你自動整理成乾淨的文章檔案</p>
-
-    <div class="nav-links">
-        <a href="/settings" class="nav-link">⚙️ 過濾關鍵字設定</a>
-        <a href="/stopwords" class="nav-link">🚫 停用詞設定</a>
-        <a href="/dictionary" class="nav-link">📚 字典管理</a>
-    </div>
-
-    <!-- 上傳 -->
-    <div class="card">
-        <h2>① 選擇檔案</h2>
-        <div class="upload-zone" id="upload-zone">
-            <div class="icon">📁</div>
-            <p><strong>把檔案或資料夾拖到這裡</strong></p>
-            <p>支援 PDF、Word、Excel、TXT（可多選）</p>
+<header>
+    <div class="header-inner">
+        <div>
+            <h1>🤖 標案補助小幫手</h1>
+            <p class="subtitle">每天自動整理政府電子採購網新標案與補助消息，再由 AI 依你的公司條件推薦</p>
         </div>
-        <input type="file" id="file-input" multiple accept=".pdf,.docx,.xlsx,.txt" hidden>
-        <div class="file-list" id="file-list"></div>
-    </div>
-
-    <!-- 步驟 + 選項 -->
-    <div class="card">
-        <h2>② 處理選項</h2>
-        <div class="steps-grid">
-            <label class="step-option checked"><input type="checkbox" value="1" checked><span class="step-num">1</span>從檔案抓文章出來</label>
-            <label class="step-option checked"><input type="checkbox" value="2" checked><span class="step-num">2</span>自動產生關鍵字</label>
-            <label class="step-option checked"><input type="checkbox" value="3" checked><span class="step-num">3</span>刪掉不相關的文章</label>
-            <label class="step-option checked"><input type="checkbox" value="4" checked><span class="step-num">4</span>去掉重複的文章</label>
-            <label class="step-option checked"><input type="checkbox" value="5" checked><span class="step-num">5</span>清掉正文裡的雜訊</label>
-            <label class="step-option checked"><input type="checkbox" value="6" checked><span class="step-num">6</span>整理檔案格式</label>
-        </div>
-        <div class="options-row">
-            <label>匯出格式：</label>
-            <select id="export-format">
-                <option value="both">TXT + Excel 都要</option>
-                <option value="txt">只要 TXT</option>
-                <option value="xlsx">只要 Excel</option>
-            </select>
+        <div class="update-box">
+            <span class="pill" id="update-pill">載入中…</span>
+            <button class="btn-small" id="update-btn">立即更新</button>
         </div>
     </div>
+</header>
 
-    <button class="btn btn-primary" id="submit-btn" disabled>🚀 開始處理</button>
+<div class="layout">
+    <main>
+        <div class="stats" id="stats"></div>
 
-    <!-- 進度 -->
-    <div class="card progress-section" id="progress-section">
-        <h2>處理進度</h2>
-        <p class="status-text" id="status-text">準備中...</p>
-        <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
-        <div class="progress-log" id="progress-log"></div>
-
-        <!-- 統計 -->
-        <div class="stats-grid" id="stats-grid" style="display:none">
-            <div class="stat-box"><div class="num" id="stat-extracted">-</div><div class="label">提取文章</div></div>
-            <div class="stat-box"><div class="num" id="stat-filtered">-</div><div class="label">過濾刪除</div></div>
-            <div class="stat-box"><div class="num" id="stat-dedup">-</div><div class="label">去重刪除</div></div>
-            <div class="stat-box"><div class="num" id="stat-final">-</div><div class="label">最終保留</div></div>
+        <div class="card">
+            <h2>🏛️ 最新招標案 <span class="count" id="tender-count"></span></h2>
+            <div class="filters">
+                <div id="industry-chips" style="display:flex;gap:0.4rem;flex-wrap:wrap"></div>
+                <input class="search" id="search" placeholder="搜尋案名、機關或地區">
+            </div>
+            <div id="tenders"></div>
+            <button class="more" id="more" style="display:none"></button>
         </div>
 
-        <a class="btn-download" id="download-btn" style="display:none" href="#">📦 下載結果</a>
-        <button class="btn-preview" id="preview-btn" style="display:none" onclick="loadPreview()">👁️ 預覽文章列表</button>
-    </div>
+        <div class="card">
+            <h2>💰 補助／獎勵消息 <span class="count" id="subsidy-count"></span></h2>
+            <div id="subsidies"></div>
+        </div>
 
-    <!-- 預覽 -->
-    <div class="card preview-section" id="preview-section">
-        <h2>文章預覽 <span id="preview-count" style="font-size:0.8rem;color:#888"></span></h2>
-        <div class="preview-list" id="preview-list"></div>
-    </div>
+        <div class="card">
+            <details class="usage">
+                <summary>📊 系統用量（AI 對話與 token）</summary>
+                <table id="usage"></table>
+            </details>
+        </div>
+    </main>
 
-    <!-- 歷史 -->
-    <div class="card history-section" id="history-section">
-        <h2>📋 處理歷史</h2>
-        <div id="history-list"><p style="color:#888;font-size:0.85rem">載入中...</p></div>
-    </div>
+    <aside class="card chat" id="chat">
+        <div class="chat-head">
+            <h2>💬 問 AI 小幫手</h2>
+            <div class="profile" id="profile"></div>
+        </div>
+        <div class="messages" id="messages"></div>
+        <div class="typing" id="typing">小幫手查詢中…（約 10～30 秒）</div>
+        <div class="suggestions" id="suggestions"></div>
+        <div class="input-row">
+            <textarea id="input" placeholder="例如：我是台中 10 人的軟體公司，有什麼標案？"></textarea>
+            <button class="btn" id="send">送出</button>
+        </div>
+    </aside>
 </div>
+<button class="fab" id="fab">💬 問小幫手</button>
 
 <script>
-const uploadZone = document.getElementById('upload-zone');
-const fileInput = document.getElementById('file-input');
-const fileList = document.getElementById('file-list');
-const submitBtn = document.getElementById('submit-btn');
-const progressSection = document.getElementById('progress-section');
-const progressLog = document.getElementById('progress-log');
-const progressBar = document.getElementById('progress-bar');
-const statusText = document.getElementById('status-text');
-const downloadBtn = document.getElementById('download-btn');
-const previewBtn = document.getElementById('preview-btn');
-const statsGrid = document.getElementById('stats-grid');
+const INDUSTRIES = ["全部", "資訊軟體", "行銷設計", "教育訓練", "顧問研究"];
+const SUGGESTIONS = [
+    "我是台中 10 人的軟體公司，有什麼標案？",
+    "預算 500 萬以上的呢？",
+    "第一個案子的押標金和資格？",
+    "最近有什麼企業可以申請的補助？",
+];
+const PAGE = 20;
+const $ = (id) => document.getElementById(id);
+let allTenders = [], shown = PAGE, industry = "全部";
 
-let selectedFiles = [];
-let currentJobId = '';
+function getUserId() {
+    let id = null;
+    try { id = localStorage.getItem("agent_user_id"); } catch (e) {}
+    if (!id) {
+        id = "web-" + Math.random().toString(36).slice(2, 10);
+        try { localStorage.setItem("agent_user_id", id); } catch (e) {}
+    }
+    return id;
+}
+const userId = getUserId();
 
-// 拖放（支援資料夾）
-uploadZone.addEventListener('click', () => fileInput.click());
-uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
-uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
-uploadZone.addEventListener('drop', async (e) => {
-    e.preventDefault();
-    uploadZone.classList.remove('dragover');
-    const items = e.dataTransfer.items;
-    if (items) {
-        const filePromises = [];
-        for (const item of items) {
-            const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
-            if (entry) {
-                filePromises.push(traverseEntry(entry));
-            } else if (item.kind === 'file') {
-                filePromises.push(Promise.resolve([item.getAsFile()]));
-            }
-        }
-        const results = await Promise.all(filePromises);
-        const allFiles = results.flat();
-        addFiles(allFiles);
+function esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function linkify(s) {
+    return esc(s).replace(/https?:\/\/[^\s<]+/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u.length > 50 ? u.slice(0, 47) + "…" : u}</a>`);
+}
+function fmtDate(d) { return d ? d.replace(/(\d{4})(\d{2})(\d{2})/, "$1/$2/$3") : ""; }
+function daysLeft(deadline) {
+    if (!deadline) return null;
+    return Math.ceil((new Date(deadline.replace(" ", "T")) - new Date()) / 86400000);
+}
+
+/* ---------------- 每日資訊 ---------------- */
+
+async function loadDigest() {
+    const data = await fetch("/api/digest").then((r) => r.json());
+    allTenders = data.tenders;
+    renderStats(data);
+    renderTenders();
+    renderSubsidies(data.subsidies);
+}
+
+function renderStats(data) {
+    const soon = data.tenders.filter((t) => { const d = daysLeft(t.deadline); return d !== null && d <= 3; }).length;
+    const industries = new Set(data.tenders.flatMap((t) => (t.industries || "").split("、")).filter(Boolean));
+    $("stats").innerHTML = [
+        [data.tenders.length, "未截止新標案", ""],
+        [soon, "3 天內截止", soon ? "warn" : ""],
+        [data.subsidies.length, "補助消息", ""],
+        [industries.size, "追蹤產業", ""],
+    ].map(([n, l, c]) => `<div class="stat"><div class="num ${c}">${n}</div><div class="label">${l}</div></div>`).join("");
+}
+
+function filteredTenders() {
+    const q = $("search").value.trim();
+    return allTenders.filter((t) =>
+        (industry === "全部" || (t.industries || "").includes(industry)) &&
+        (!q || [t.title, t.unit, t.location].some((v) => (v || "").includes(q))));
+}
+
+function renderTenders() {
+    const list = filteredTenders();
+    $("tender-count").textContent = `${list.length} 件`;
+    if (!list.length) {
+        $("tenders").innerHTML = `<div class="empty">${allTenders.length ? "沒有符合條件的標案" : "還沒有資料，按右上角「立即更新」抓取（約 3～5 分鐘）"}</div>`;
+        $("more").style.display = "none";
+        return;
+    }
+    $("tenders").innerHTML = list.slice(0, shown).map((t, i) => {
+        const d = daysLeft(t.deadline);
+        const due = d !== null && d <= 3 ? `<span class="due">剩 ${Math.max(d, 0)} 天</span>` : "";
+        const tags = (t.industries || "").split("、").filter(Boolean).map((x) => `<span class="tag">${esc(x)}</span>`).join("");
+        return `<div class="tender">
+            <a class="name" href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.title)}</a>
+            <div class="budget">${esc(t.budget)}</div>
+            <div class="meta">${tags}<span>${esc(t.unit)}</span><span>📍${esc((t.location || "").replace(/\(.*\)/, ""))}</span><span>⏰ ${esc(t.deadline || "截止日未知")}</span>${due}</div>
+            <button class="ask" data-i="${i}">問小幫手</button>
+        </div>`;
+    }).join("");
+    const rest = list.length - shown;
+    $("more").style.display = rest > 0 ? "block" : "none";
+    $("more").textContent = `顯示更多（還有 ${rest} 件）`;
+}
+
+function renderSubsidies(list) {
+    $("subsidy-count").textContent = `${list.length} 則`;
+    $("subsidies").innerHTML = list.length ? list.map((s) => `<div class="subsidy">
+        <a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>
+        <div class="meta">${esc(s.source || "")}・${esc(s.published || "")}</div>
+    </div>`).join("") : `<div class="empty">目前沒有補助消息</div>`;
+}
+
+$("industry-chips").innerHTML = INDUSTRIES.map((x) => `<span class="chip ${x === industry ? "active" : ""}" data-v="${x}">${x}</span>`).join("");
+$("industry-chips").addEventListener("click", (e) => {
+    const v = e.target.dataset.v;
+    if (!v) return;
+    industry = v; shown = PAGE;
+    document.querySelectorAll("#industry-chips .chip").forEach((c) => c.classList.toggle("active", c.dataset.v === v));
+    renderTenders();
+});
+$("search").addEventListener("input", () => { shown = PAGE; renderTenders(); });
+$("more").addEventListener("click", () => { shown += PAGE; renderTenders(); });
+$("tenders").addEventListener("click", (e) => {
+    if (!e.target.classList.contains("ask")) return;
+    const t = filteredTenders()[Number(e.target.dataset.i)];
+    send(`幫我看這個標案的廠商資格、押標金和截止日：${t.title}\n${t.url}`);
+    $("chat").scrollIntoView({ behavior: "smooth" });
+});
+
+/* ---------------- 更新狀態 ---------------- */
+
+let wasRunning = false;
+async function loadUpdate() {
+    const s = await fetch("/api/update").then((r) => r.json());
+    const pill = $("update-pill");
+    pill.className = "pill" + (s.running ? " running" : s.last_error ? " error" : "");
+    if (s.running) {
+        pill.textContent = "⏳ 正在更新今日資料…" + (s.log.length ? "（" + s.log[s.log.length - 1].trim().slice(0, 24) + "）" : "");
+    } else if (s.last_error) {
+        pill.textContent = `⚠️ 上次更新失敗：${s.last_error.slice(0, 30)}`;
     } else {
-        addFiles(e.dataTransfer.files);
+        const at = s.last_update_at ? s.last_update_at.slice(5, 16).replace("T", " ") : "—";
+        pill.textContent = `📅 公告日期 ${fmtDate(s.data_date) || "—"}・更新於 ${at}・每天 ${s.update_time} 自動更新`;
     }
+    $("update-btn").disabled = s.running;
+    if (wasRunning && !s.running) loadDigest();
+    wasRunning = s.running;
+    setTimeout(loadUpdate, s.running ? 5000 : 60000);
+}
+$("update-btn").addEventListener("click", async () => {
+    if (!confirm("立即重新抓取最新標案與補助？約需 3～5 分鐘，期間仍可正常使用。")) return;
+    await fetch("/api/update", { method: "POST" });
+    wasRunning = true;
+    loadUpdate();
 });
 
-function traverseEntry(entry) {
-    return new Promise(resolve => {
-        if (entry.isFile) {
-            entry.file(f => resolve([f]));
-        } else if (entry.isDirectory) {
-            const reader = entry.createReader();
-            reader.readEntries(async entries => {
-                const results = await Promise.all(entries.map(e => traverseEntry(e)));
-                resolve(results.flat());
-            });
-        } else {
-            resolve([]);
-        }
-    });
+/* ---------------- AI 對話 ---------------- */
+
+const PROFILE_LABELS = { industry: "", company_size: " 人", location: "", need: "" };
+function renderProfile(p) {
+    const tags = Object.entries(PROFILE_LABELS).filter(([k]) => p && p[k]).map(([k, suffix]) => `<span class="tag">${esc(p[k])}${suffix}</span>`).join("");
+    $("profile").innerHTML = (tags ? `已記住：${tags}` : "還不知道你的公司條件，告訴我產業和地區吧") +
+        `<button class="link-btn" id="reset">清除記憶</button>`;
 }
 
-fileInput.addEventListener('change', () => addFiles(fileInput.files));
-
-function addFiles(files) {
-    const allowedExt = ['.pdf', '.docx', '.xlsx', '.txt'];
-    for (const f of files) {
-        const ext = '.' + f.name.split('.').pop().toLowerCase();
-        if (allowedExt.includes(ext)) {
-            if (!selectedFiles.find(sf => sf.name === f.name && sf.size === f.size)) {
-                selectedFiles.push(f);
-            }
-        }
+function addMessage(role, text, trace) {
+    const wrap = document.createElement("div");
+    wrap.className = "msg " + role;
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.innerHTML = linkify(text);
+    if (trace && trace.length) {
+        const t = document.createElement("div");
+        t.className = "trace";
+        t.textContent = trace.join("\n");
+        bubble.appendChild(t);
     }
-    renderFileList();
-    submitBtn.disabled = selectedFiles.length === 0;
+    wrap.appendChild(bubble);
+    $("messages").appendChild(wrap);
+    $("messages").scrollTop = $("messages").scrollHeight;
 }
 
-function renderFileList() {
-    fileList.innerHTML = selectedFiles.map((f, i) => `
-        <div class="file-item">
-            <span class="name">📄 ${f.name}</span>
-            <span class="size">${(f.size/1024/1024).toFixed(1)} MB</span>
-            <span class="remove" onclick="removeFile(${i})">✕</span>
-        </div>
-    `).join('');
-}
-
-function removeFile(idx) {
-    selectedFiles.splice(idx, 1);
-    renderFileList();
-    submitBtn.disabled = selectedFiles.length === 0;
-}
-
-// Checkbox 樣式
-document.querySelectorAll('.step-option input[type="checkbox"]').forEach(cb => {
-    cb.addEventListener('change', () => cb.closest('.step-option').classList.toggle('checked', cb.checked));
-});
-
-// 送出
-submitBtn.addEventListener('click', async () => {
-    if (selectedFiles.length === 0) return;
-
-    const steps = [];
-    document.querySelectorAll('.step-option input:checked').forEach(cb => steps.push(cb.value));
-    const exportFormat = document.getElementById('export-format').value;
-
-    const formData = new FormData();
-    for (const f of selectedFiles) formData.append('files', f);
-    formData.append('steps', steps.join(','));
-    formData.append('export_format', exportFormat);
-
-    submitBtn.disabled = true;
-    submitBtn.textContent = '處理中...';
-    progressSection.classList.add('active');
-    progressLog.innerHTML = '';
-    downloadBtn.style.display = 'none';
-    previewBtn.style.display = 'none';
-    statsGrid.style.display = 'none';
-    document.getElementById('preview-section').classList.remove('active');
-    statusText.textContent = '上傳中...';
-    progressBar.style.width = '5%';
-    progressSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
+async function send(text) {
+    text = (text || $("input").value).trim();
+    if (!text || $("send").disabled) return;
+    $("input").value = "";
+    addMessage("user", text);
+    $("send").disabled = true;
+    $("typing").classList.add("active");
     try {
-        const resp = await fetch('/api/upload', { method: 'POST', body: formData });
-        const data = await resp.json();
-        if (data.error) { appendLog('❌ ' + data.error); resetBtn(); return; }
-
-        currentJobId = data.job_id;
-        statusText.textContent = `處理 ${data.file_count} 個檔案...`;
-        progressBar.style.width = '10%';
-
-        const evtSource = new EventSource(`/api/progress/${data.job_id}`);
-        let msgCount = 0;
-
-        evtSource.addEventListener('progress', e => {
-            msgCount++;
-            appendLog(e.data);
-            // 解析百分比
-            const pctMatch = e.data.match(/\((\d+)%\)/);
-            if (pctMatch) {
-                progressBar.style.width = Math.min(90, parseInt(pctMatch[1])) + '%';
-            } else {
-                progressBar.style.width = Math.min(90, 10 + msgCount * 2) + '%';
-            }
-        });
-
-        evtSource.addEventListener('done', e => {
-            evtSource.close();
-            progressBar.style.width = '100%';
-            statusText.textContent = '✅ 處理完成！';
-
-            const result = JSON.parse(e.data);
-            downloadBtn.href = result.download_url;
-            downloadBtn.style.display = 'block';
-            previewBtn.style.display = 'block';
-
-            // 顯示統計
-            if (result.stats) {
-                const s = result.stats;
-                document.getElementById('stat-extracted').textContent = s.extracted || 0;
-                document.getElementById('stat-filtered').textContent = s.filtered_out || 0;
-                document.getElementById('stat-dedup').textContent = s.dedup_removed || 0;
-                document.getElementById('stat-final').textContent = s.final || 0;
-                statsGrid.style.display = 'grid';
-            }
-
-            resetBtn();
-            loadHistory();
-        });
-
-        evtSource.addEventListener('error', e => {
-            if (e.data) appendLog('❌ ' + e.data);
-            evtSource.close();
-            statusText.textContent = '❌ 處理失敗';
-            resetBtn();
-        });
-    } catch (err) {
-        appendLog('❌ 連線失敗: ' + err.message);
-        resetBtn();
-    }
-});
-
-function resetBtn() { submitBtn.disabled = false; submitBtn.textContent = '🚀 開始處理'; }
-function appendLog(msg) {
-    const div = document.createElement('div');
-    div.className = 'msg';
-    div.textContent = msg;
-    progressLog.appendChild(div);
-    progressLog.scrollTop = progressLog.scrollHeight;
-}
-
-// 預覽
-async function loadPreview() {
-    if (!currentJobId) return;
-    const resp = await fetch(`/api/preview/${currentJobId}`);
-    const data = await resp.json();
-    const section = document.getElementById('preview-section');
-    const list = document.getElementById('preview-list');
-    document.getElementById('preview-count').textContent = `（共 ${data.total || 0} 篇）`;
-
-    list.innerHTML = (data.articles || []).slice(0, 100).map(a => `
-        <div class="preview-item">
-            <div class="title">${a.title}</div>
-            ${a.keywords ? `<div class="kw">🏷️ ${a.keywords}</div>` : ''}
-            <div class="body">${a.preview}</div>
-        </div>
-    `).join('');
-
-    section.classList.add('active');
-    section.scrollIntoView({ behavior: 'smooth' });
-}
-
-// 歷史
-async function loadHistory() {
-    try {
-        const resp = await fetch('/api/history');
-        const history = await resp.json();
-        const container = document.getElementById('history-list');
-
-        if (!history.length) {
-            container.innerHTML = '<p style="color:#888;font-size:0.85rem">還沒有處理紀錄</p>';
-            return;
-        }
-
-        container.innerHTML = history.map(h => `
-            <div class="history-item">
-                <div class="info">
-                    <div>${h.files} 個檔案 → ${h.stats?.final || '?'} 篇文章</div>
-                    <div class="time">${h.time} ｜ 步驟 ${h.steps.join(',')}</div>
-                </div>
-                <div class="actions">
-                    ${h.available ? `<a href="/api/download/${h.job_id}">下載</a>` : '<span style="color:#aaa;font-size:0.78rem">已清除</span>'}
-                    <button class="del-btn" onclick="deleteHistory('${h.job_id}')">刪除</button>
-                </div>
-            </div>
-        `).join('');
+        const data = await fetch("/api/agent/chat", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: userId, message: text }),
+        }).then((r) => r.json());
+        addMessage("bot", data.reply || "（沒有回覆）", data.trace);
+        renderProfile(data.profile);
     } catch (e) {
-        document.getElementById('history-list').innerHTML = '<p style="color:#888;font-size:0.85rem">載入失敗</p>';
+        addMessage("bot", "連線失敗，請確認服務是否啟動。");
+    } finally {
+        $("send").disabled = false;
+        $("typing").classList.remove("active");
+        loadUsage();
     }
 }
 
-async function deleteHistory(jobId) {
-    await fetch(`/api/history/${jobId}`, { method: 'DELETE' });
-    loadHistory();
+async function loadUsage() {
+    try {
+        const u = await fetch("/api/agent/usage").then((r) => r.json());
+        const rows = u.days.map((d) => `<tr><td>${d.day}</td><td>${d.users || 0}</td><td>${d.chats || 0}</td><td>${(d.input_tokens || 0).toLocaleString()}</td><td>${(d.output_tokens || 0).toLocaleString()}</td></tr>`).join("");
+        $("usage").innerHTML = `<tr><th>日期</th><th>使用者</th><th>對話</th><th>輸入 token</th><th>輸出 token</th></tr>` +
+            (rows || `<tr><td colspan="5" style="text-align:center;color:#bbb">尚無資料</td></tr>`);
+    } catch (e) {}
 }
 
-// 頁面載入時讀歷史
-loadHistory();
+$("suggestions").innerHTML = SUGGESTIONS.map((s) => `<span class="chip">${esc(s)}</span>`).join("");
+$("suggestions").addEventListener("click", (e) => { if (e.target.classList.contains("chip")) send(e.target.textContent); });
+$("send").addEventListener("click", () => send());
+$("input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
+});
+$("profile").addEventListener("click", async (e) => {
+    if (e.target.id !== "reset") return;
+    if (!confirm("清除小幫手記住的公司條件和對話紀錄？")) return;
+    await fetch("/api/agent/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user_id: userId }) });
+    $("messages").innerHTML = "";
+    addMessage("bot", "記憶已清除，我們重新開始吧！");
+    renderProfile(null);
+});
+$("fab").addEventListener("click", () => $("chat").scrollIntoView({ behavior: "smooth" }));
+
+addMessage("bot", "👋 嗨！我是標案補助小幫手。\n左邊是今天最新的標案和補助；告訴我你的產業、人數和地區，我幫你挑出最適合的案子。\n\n也可以在任一標案按「問小幫手」，我會讀公告幫你整理資格和押標金。");
+fetch(`/api/agent/profile?user_id=${encodeURIComponent(userId)}`).then((r) => r.json()).then(renderProfile).catch(() => renderProfile(null));
+loadDigest();
+loadUpdate();
+loadUsage();
 </script>
 </body>
 </html>

@@ -44,7 +44,6 @@ CREATE TABLE IF NOT EXISTS users (
     company_size  INTEGER,
     location      TEXT,
     need          TEXT,
-    subscribed    INTEGER NOT NULL DEFAULT 0,
     updated_at    TEXT
 );
 CREATE TABLE IF NOT EXISTS messages (
@@ -62,6 +61,10 @@ CREATE TABLE IF NOT EXISTS usage (
     input_tokens  INTEGER,
     output_tokens INTEGER,
     created_at    TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS meta (
+    key           TEXT PRIMARY KEY,
+    value         TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_messages_user ON messages(user_id, id);
 """
@@ -109,7 +112,7 @@ def get_user(user_id: str) -> dict:
             return dict(row)
         conn.execute("INSERT INTO users (user_id, updated_at) VALUES (?, ?)", (user_id, now()))
         return {"user_id": user_id, "industry": None, "company_size": None,
-                "location": None, "need": None, "subscribed": 0}
+                "location": None, "need": None}
 
 
 def update_user(user_id: str, **fields) -> dict:
@@ -124,9 +127,10 @@ def update_user(user_id: str, **fields) -> dict:
     return get_user(user_id)
 
 
-def subscribed_users() -> list[dict]:
+def reset_user(user_id: str) -> None:
     with connect() as conn:
-        return [dict(r) for r in conn.execute("SELECT * FROM users WHERE subscribed = 1")]
+        conn.execute("DELETE FROM messages WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
 
 
 # ===========================================================================
@@ -163,4 +167,50 @@ def usage_summary(days: int = 14) -> list[dict]:
                    SUM(input_tokens)         AS input_tokens,
                    SUM(output_tokens)        AS output_tokens
             FROM usage GROUP BY day ORDER BY day DESC LIMIT ?""", (days,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+# ===========================================================================
+# 系統狀態（每日更新紀錄）
+# ===========================================================================
+
+def get_meta(key: str, default: str | None = None) -> str | None:
+    with connect() as conn:
+        row = conn.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
+    return row["value"] if row else default
+
+
+def set_meta(key: str, value: str) -> None:
+    with connect() as conn:
+        conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", (key, value))
+
+
+# ===========================================================================
+# 首頁：最新一期資料
+# ===========================================================================
+
+def latest_fetched_date() -> str | None:
+    with connect() as conn:
+        return conn.execute("SELECT MAX(fetched_date) FROM tenders").fetchone()[0]
+
+
+def latest_tenders(industry: str = "") -> list[dict]:
+    """最新一期、尚未截止的標案，依預算由大到小"""
+    date = latest_fetched_date()
+    if not date:
+        return []
+    sql = ("SELECT * FROM tenders WHERE fetched_date = ? "
+           "AND (deadline IS NULL OR deadline >= ?)")
+    params: list = [date, datetime.now().strftime("%Y-%m-%d %H:%M")]
+    if industry:
+        sql += " AND industries LIKE ?"
+        params.append(f"%{industry}%")
+    with connect() as conn:
+        rows = conn.execute(sql + " ORDER BY budget IS NULL, budget DESC", params).fetchall()
+    return [dict(r) for r in rows]
+
+
+def latest_subsidies(limit: int = 20) -> list[dict]:
+    with connect() as conn:
+        rows = conn.execute("SELECT * FROM subsidies ORDER BY published DESC LIMIT ?", (limit,)).fetchall()
     return [dict(r) for r in rows]

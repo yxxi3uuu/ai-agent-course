@@ -37,7 +37,7 @@ SYSTEM_PROMPT = """<role>
 </role>
 
 <user_profile>
-產業：{industry}｜人數：{company_size}｜地區：{location}｜需求：{need}｜每日推播：{subscribed}
+產業：{industry}｜人數：{company_size}｜地區：{location}｜需求：{need}
 </user_profile>
 
 <rules>
@@ -50,7 +50,7 @@ SYSTEM_PROMPT = """<role>
 5. 公司人數少（10 人以下）時，提醒優先看預算較小、資格門檻較低的案子。
 6. 使用者貼採購網連結，或問押標金、資格等細節時，用 read_tender_page 讀取後回答。
 7. 不提供圍標、綁標、借牌、偽造文件等任何規避採購法的建議。
-8. 回覆會顯示在 LINE：用繁體中文、口語而專業、條列；不要用 Markdown 符號（不要 **、#、表格）。
+8. 回覆顯示在網頁對話框（純文字）：用繁體中文、口語而專業、條列；不要用 Markdown 符號（不要 **、#、表格）。
 9. 與標案、補助無關的問題，簡短說明你能做什麼。
 </rules>"""
 
@@ -65,7 +65,7 @@ INPUT_GUARD_PROMPT = """<task>
 - 要求取得他人私人個資
 </block_if>
 <allow_if>
-一般問候、詢問標案、補助、資格、公司條件、訂閱推播等正常需求，即使講得很簡短或口語也放行。
+一般問候、詢問標案、補助、資格、公司條件等正常需求，即使講得很簡短或口語也放行。
 </allow_if>"""
 
 OUTPUT_GUARD_PROMPT = """<task>
@@ -161,7 +161,7 @@ def output_guard(user_id: str, reply: str, ctx: ToolContext) -> str:
     lines = [check_line(l) for l in reply.splitlines()]
     reply = "\n".join(l for l in lines if l is not None).strip()
 
-    # 2) LINE 不支援 Markdown：去掉粗體、把 * / - 項目符號換成「・」
+    # 2) 對話框是純文字：去掉 Markdown 粗體、把 * / - 項目符號換成「・」
     reply = reply.replace("**", "")
     reply = re.sub(r"^(\s*)[*-]\s+", r"\1・", reply, flags=re.MULTILINE)
 
@@ -175,7 +175,7 @@ def output_guard(user_id: str, reply: str, ctx: ToolContext) -> str:
         except Exception as e:
             print(f"[output_guard] {e}", file=sys.stderr)
 
-    if "pcc.gov.tw" in reply or "openfun.app" in reply:
+    if ("pcc.gov.tw" in reply or "openfun.app" in reply) and "以公告及投標須知為準" not in reply:
         reply += f"\n\n{DISCLAIMER}"
     return reply
 
@@ -192,16 +192,18 @@ def _system_prompt(user: dict) -> str:
         company_size=f"{user['company_size']} 人" if user.get("company_size") else unknown,
         location=user.get("location") or unknown,
         need=user.get("need") or unknown,
-        subscribed="已訂閱" if user.get("subscribed") else "未訂閱",
     )
 
 
-def chat(user_id: str, text: str, verbose: bool = False) -> str:
+def chat(user_id: str, text: str, verbose: bool = False, trace: list[str] | None = None) -> str:
+    """trace：傳入 list 時，會把護欄判斷與工具呼叫紀錄附加進去（網頁 Demo 顯示用）"""
     text = text.strip()[:1000]
     allowed, reason = input_guard(user_id, text)
     if not allowed:
         if verbose:
             print(f"  [輸入護欄擋下] {reason}")
+        if trace is not None:
+            trace.append(f"🛡️ 輸入護欄擋下：{reason}")
         db.add_message(user_id, "user", text)
         db.add_message(user_id, "model", BLOCKED_REPLY)
         return BLOCKED_REPLY
@@ -233,6 +235,8 @@ def chat(user_id: str, text: str, verbose: bool = False) -> str:
     if verbose:
         for c in ctx.calls:
             print(f"  [tool] {c}")
+    if trace is not None:
+        trace.extend(f"🔧 {c}" for c in ctx.calls)
     reply = output_guard(user_id, reply, ctx)
     db.add_message(user_id, "user", text)
     db.add_message(user_id, "model", reply)
